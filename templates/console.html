@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+{% import "bootstrap/wtf.html" as wtf %}
+{% block head %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    {% block additional_stylesheets %}
+    {% endblock %}
+    <title>Durak</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+</head>
+{% endblock %}
+
+{% block body %}
+<body>
+    {% block above_navbar_content %}
+    {% endblock %}
+    {% block navbar %}
+    <nav class="navbar navbar-expand-lg navbar-light" style="background-color: #8DEBF0;">
+        <a class="navbar-brand" href="#">Durak</a>
+        {% block additional_navbar_content %}
+            <ul class="navbar-nav mr-auto">
+                {% block console_navbar_links %}
+                {% endblock %}
+            </ul>
+            <a class="navbar-brand"> {{ email }} </a>
+            <form method="get" action="/console/logout/">
+                <button class="btn" type="submit">Logout</button>
+            </form>
+        {% endblock %}
+    </nav>
+    {% endblock %}
+
+    {% block main_page_content %}
+    <div class="container-fluid">
+        {% block page_specific_content %}
+        <row>
+            <h5>Select number of players for a new game:</h5>
+            <div class="btn-group" id="numPlayers">
+            <label class="radio-inline"><input type="radio" name="optradio" value="2" checked>   2   </label>
+            <label class="radio-inline"><input type="radio" name="optradio" value="3">   3   </label>
+            <label class="radio-inline"><input type="radio" name="optradio" value="4">   4   </label>
+            <label class="radio-inline"><input type="radio" name="optradio" value="5">   5   </label>
+            <label class="radio-inline"><input type="radio" name="optradio" value="6">   6   </label>
+            </div>
+        </row>
+        <button type="button" class="btn btn-primary" id="newGameButton">Create a New Game</button>
+        <h5 id="loadingText"></h5>
+        <h5 id="logoutWarning"></h5>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                var socket = io.connect('http://127.0.0.1:5000');
+
+                socket.on('connect', function() {
+                    $('#loadingText').hide();
+                    $('#logoutWarning').hide();
+                });
+
+                socket.on('waitingForPlayers', function(numPlayers, playersJoined) {
+                    console.log("I am now waiting for players.");
+                    $('#numPlayers').hide();
+                    $('#newGameButton').hide();
+                    $('#loadingText').text("You created a game for " + numPlayers +
+                        " people.  Waiting for " + (numPlayers-playersJoined) + " more players...");
+                    $('#loadingText').show();
+                    $('#logoutWarning').text("If you logout, you will end this game!");
+                    $('#logoutWarning').show();
+                });
+
+                $('#newGameButton').on('click', function() {
+                    var numPlayers = $('#numPlayers input:radio:checked').val();
+                    socket.emit('newGame', numPlayers);
+                })
+            });
+         </script>
+        {% endblock %}
+    </div>
+    {% endblock %}
+
+    {% block boostrap_javascript_sources %}
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    {% endblock %}
+</body>
+{% endblock %}
+</html>

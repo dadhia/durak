@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block additional_navbar_content %}
+{{ wtf.quick_form(login_form, action='/login/', form_type='inline', method='post')}}
+{% endblock %}
+
+{% block page_specific_content %}
+    <div class="container-fluid">
+        {% block form_errors %}
+        {% endblock %}
+        <div class="row">
+            <div class="col-sm-12">
+                <h3>Create a profile to start playing.</h3>
+                {% block reqistration_errors %}
+                {% endblock %}
+                {{ wtf.quick_form(registration_form, action='/register/', form_type='basic', method='post')}}
+            </div>
+        </div>
+    </div>
+{% endblock %}}
