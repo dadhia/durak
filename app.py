@@ -3,12 +3,14 @@ from flask import redirect, url_for, render_template
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
 from flask_login import current_user, login_user, login_required, logout_user
-from flask_socketio import SocketIO, send, emit
+from flask_socketio import SocketIO, emit
+from flask_socketio import join_room, leave_room
 from forms.user_forms import LoginForm, RegistrationForm
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
-from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, INVALID_LOGIN
+from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, INVALID_LOGIN, LOBBY_ROOM_NAME
+from util import get_game_room_name
 import os
 
 app = Flask(__name__)
@@ -28,7 +30,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 from models.user import User
+from models.game import Game
+from models.game_played import GamePlayed
 db.create_all()
+
+lobby_games = []
 
 
 @app.route('/', methods=['GET'])
@@ -68,7 +74,6 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter(User.email == form.email.data).first()
         if user is not None and pbkdf2_sha256.verify(form.password.data, user.password):
-            print("here")
             login_user(user)
             return redirect(url_for('console'))
     return render_template('index-with-errors.html',
@@ -90,18 +95,77 @@ def logout():
     return redirect(url_for('index'))
 
 
+"""
+Creates a new game.  The game is entered into a database table of games with started = False and cancelled = False.
+Also creates an entry into the games_played table, logging that this user has joined the game.
+Finally, emits this data to the correct rooms.
+"""
 @socketio.on('newGame')
 @login_required
 def new_game(num_players):
-    print(current_user.email + " wants to make a game with " + num_players + " players.")
-    emit('waitingForPlayers', (num_players, '1'))
+    game = Game(game_creator=current_user.id, num_players=int(num_players), started=False, cancelled=False,
+                players_joined=1)
+    db.session.add(game)
+    db.session.commit()
+
+    game_played = GamePlayed(user_id=current_user.id, game_id=game.id, join_position=1)
+    db.session.add(game_played)
+    db.session.commit()
+
+    lobby_games.append(game)
+    game_room_name = get_game_room_name(game.id)
+    join_room(game_room_name)
+    leave_room(LOBBY_ROOM_NAME)
+
+    emit('waitingForPlayers', (num_players, '1', game.id))
+    open_spots = int(num_players) - 1
+    emit('addToOpenGamesTable', (current_user.email, num_players, open_spots, True, game.id), room=LOBBY_ROOM_NAME)
 
 
+"""
+Called when a user logs into their console and connects with a websocket.
+We will send them all available games for them to join.
+"""
+@socketio.on('connect')
+@login_required
+def connect():
+    for game in lobby_games:
+        can_join = game.game_creator is not current_user.id
+        game_creator = User.query.filter_by(User.id == game.game_creator).first()
+        emit('addToOpenGamesTable', (game_creator.email, game.num_players, game.players_joined, can_join, game.id))
+    join_room(LOBBY_ROOM_NAME)
+    # TODO - are they already in a game?
+
+
+"""
+Called when a user disconnects from their console.
+Remove any game that this user has created (should only be one) and broadcast this message to all users.
+"""
+@socketio.on('disconnect')
+@login_required
+def disconnect():
+    for game in lobby_games:
+        if game.game_creator == current_user.id:
+            game.cancelled = True
+            game_to_cancel = Game.query.filter_by(Game.id == game.id).first()
+            game_to_cancel.cancelled = True
+            db.session.commit()
+            lobby_games.remove(game)
+            emit('removeFromOpenGamesTable', game.id, room=LOBBY_ROOM_NAME)
+            # TODO identify any users which have joined and remove them as well
+
+
+"""
+User loader for flask login manager.
+"""
 @login_manager.user_loader
 def user_loader(user_id):
     return User.query.filter(User.id == int(user_id)).first()
 
 
+"""
+Redirects users to the main login screen if they attempt to access something without logging in.
+"""
 @login_manager.unauthorized_handler
 def unauthorized():
     return redirect(url_for('index'))

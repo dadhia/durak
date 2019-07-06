@@ -37,7 +37,7 @@
     {% block main_page_content %}
     <div class="container-fluid">
         {% block page_specific_content %}
-        <row>
+        <row id="createGameBlock">
             <h5>Select number of players for a new game:</h5>
             <div class="btn-group" id="numPlayers">
             <label class="radio-inline"><input type="radio" name="optradio" value="2" checked>   2   </label>
@@ -46,34 +46,63 @@
             <label class="radio-inline"><input type="radio" name="optradio" value="5">   5   </label>
             <label class="radio-inline"><input type="radio" name="optradio" value="6">   6   </label>
             </div>
+            <button type="button" class="btn btn-primary" id="newGameButton">Create a New Game</button>
         </row>
-        <button type="button" class="btn btn-primary" id="newGameButton">Create a New Game</button>
-        <h5 id="loadingText"></h5>
-        <h5 id="logoutWarning"></h5>
+
+        <row id="messageBlock">
+            <p id="loadingText"></p>
+            <p id="logoutWarning"></p>
+        </row>
+
+        <row id="lobby">
+            <h5>Active Games</h5>
+            <table class="table" id="openGamesTable">
+            <thead>
+                <tr>
+                    <th>Game Creator</th>
+                    <th>Number of Players</th>
+                    <th>Remaining Spots</th>
+                    <th>Join Game</th>
+                </tr>
+            </thead>
+        </table>
+        </row>
         <script type="text/javascript">
             $(document).ready(function() {
                 var socket = io.connect('http://127.0.0.1:5000');
 
                 socket.on('connect', function() {
-                    $('#loadingText').hide();
-                    $('#logoutWarning').hide();
+                    $('#messageBlock').hide();
                 });
 
-                socket.on('waitingForPlayers', function(numPlayers, playersJoined) {
-                    console.log("I am now waiting for players.");
-                    $('#numPlayers').hide();
-                    $('#newGameButton').hide();
-                    $('#loadingText').text("You created a game for " + numPlayers +
-                        " people.  Waiting for " + (numPlayers-playersJoined) + " more players...");
-                    $('#loadingText').show();
-                    $('#logoutWarning').text("If you logout, you will end this game!");
-                    $('#logoutWarning').show();
+                socket.on('waitingForPlayers', function(numPlayers, playersJoined, gameID) {
+                    $('#createGameBlock').hide();
+                    $('#loadingText').text("You have joined game #" + gameID + ". " + playersJoined + " players have " +
+                            "joined. Waiting for " + (numPlayers - playersJoined) + " more players to join.");
+                    $('#logoutWarning').text("If you logout, you will cancel this game!");
+                    $('#messageBlock').show();
+                    $('#lobby').hide();
                 });
 
                 $('#newGameButton').on('click', function() {
                     var numPlayers = $('#numPlayers input:radio:checked').val();
                     socket.emit('newGame', numPlayers);
-                })
+                });
+
+                socket.on('addToOpenGamesTable', function(email, numPlayers, remainingSpots, showButton, gameID) {
+                    var buttonID = 'joinGame' + gameID;
+                    var nextRow = "<tr>" + "<td>" + email + "</td>" + "<td>" + numPlayers + "</td>" +
+                        "<td>" + remainingSpots + "</td>" + "<td>";
+                    if (showButton) {
+                        nextRow += '<button type="button" class="btn btn-primary" id="' +  buttonID + '">Join</button>';
+                    }
+                    nextRow += "</td>";
+                    $('#openGamesTable').append(nextRow);
+
+                    $('#' + buttonID).on('click', function() {
+                        socket.emit('joinGame', gameID);
+                    });
+                });
             });
          </script>
         {% endblock %}
