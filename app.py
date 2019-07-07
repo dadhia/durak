@@ -10,7 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
 from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, INVALID_LOGIN, LOBBY_ROOM_NAME
-from constants import REMOVE_GAME_FROM_LOBBY, GAME_CANCELLED, WAITING_FOR_PLAYERS
+from constants import REMOVE_GAME_FROM_LOBBY, GAME_CANCELLED, WAITING_FOR_PLAYERS, ADD_LOBBY_GAME
 from util import get_game_room_name
 import os
 
@@ -35,7 +35,7 @@ from models.game import Game
 from models.game_played import GamePlayed
 db.create_all()
 
-from db_operations import cancel_game, get_user
+from db_operations import cancel_game, get_user, insert_new_game, add_user_to_game
 
 lobby_games = []
 
@@ -107,15 +107,8 @@ Finally, emits this data to the correct rooms.
 @socketio.on('newGame')
 @login_required
 def new_game(num_players):
-    game = Game(game_creator=current_user.id, num_players=int(num_players), started=False, cancelled=False,
-                players_joined=1)
-    db.session.add(game)
-    db.session.commit()
-
-    game_played = GamePlayed(user_id=current_user.id, game_id=game.id, join_position=1)
-    db.session.add(game_played)
-    db.session.commit()
-
+    game = insert_new_game(current_user.id, int(num_players))
+    add_user_to_game(current_user.id, game.id)
     lobby_games.append(game)
     game_room_name = get_game_room_name(game.id)
     leave_room(LOBBY_ROOM_NAME)
@@ -123,7 +116,7 @@ def new_game(num_players):
 
     emit(WAITING_FOR_PLAYERS, (num_players, '1', game.id, True))
     open_spots = int(num_players) - 1
-    emit('addToOpenGamesTable', (current_user.email, num_players, open_spots, game.id), room=LOBBY_ROOM_NAME)
+    emit(ADD_LOBBY_GAME, (current_user.email, num_players, open_spots, game.id), room=LOBBY_ROOM_NAME)
 
 
 """
@@ -133,10 +126,7 @@ We will send them all available games for them to join.
 @socketio.on('connect')
 @login_required
 def connect():
-    for game in lobby_games:
-        can_join = game.game_creator is not current_user.id
-        game_creator = User.query.filter_by(User.id == game.game_creator).first()
-        emit('addToOpenGamesTable', (game_creator.email, game.num_players, game.players_joined, can_join, game.id))
+    send_all_lobby_games()
     join_room(LOBBY_ROOM_NAME)
     # TODO - are they already in a game?
 
@@ -148,13 +138,10 @@ Remove any game that this user has created (should only be one) and broadcast th
 @socketio.on('disconnect')
 @login_required
 def disconnect():
-    print("Disconnecting...")
-    print(len(lobby_games))
     for game in lobby_games:
         if game.game_creator == current_user.id:
             delete_lobby_game(game)
             break
-    print(len(lobby_games))
 
 
 """
@@ -168,6 +155,7 @@ def cancel_lobby_game(game_id):
             delete_lobby_game(game)
             break
     join_room(LOBBY_ROOM_NAME)
+    send_all_lobby_games()
 
 
 """
@@ -183,6 +171,12 @@ def delete_lobby_game(game):
     leave_room(get_game_room_name(game.id))
     emit(REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
     emit(GAME_CANCELLED, room=get_game_room_name(game.id))
+
+
+def send_all_lobby_games():
+    for game in lobby_games:
+        game_creator = User.query.filter_by(id=game.game_creator).first()
+        emit(ADD_LOBBY_GAME, (game_creator.email, game.num_players, game.players_joined, game.id))
 
 
 """
