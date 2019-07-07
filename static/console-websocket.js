@@ -61,8 +61,12 @@ $(document).ready(function() {
     });
 
     socket.on('removeLobbyGame', function(game_id) {
-        console.log("Attampting to remove " + game_id);
-        $('table#openGamesTable tr#'+game_id).remove();
+        $('table#openGamesTable tr#' + game_id).remove();
+    });
+
+    socket.on('updateLobbyGame', function(remaining_spots, game_id) {
+        console.log("Time to update lobby game!");
+        $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
     });
 
     $('#newGameButton').on('click', function() {

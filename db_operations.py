@@ -38,3 +38,15 @@ def add_user_to_game(user_id, game_id):
         db.session.add(game_played)
         db.session.commit()
         return True
+
+
+"""
+Delete association between user and game.
+"""
+def remove_user_from_game(user_id, game_id):
+    game_played = GamePlayed.query.filter_by(user_id=user_id, game_id=game_id).first()
+    game = Game.query.filter_by(id=game_id).first()
+    game.num_players -= 1
+    db.session.delete(game_played)
+    db.session.commit()
+    return game

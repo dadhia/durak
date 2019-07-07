@@ -3,12 +3,3 @@ INVALID_LOGIN = "Sorry. We couldn't log you in. Please check your username and p
 DUPLICATE_EMAIL = "Sorry. That username is already registered."
 LOBBY_ROOM_NAME = "LOBBY"
 GAME_ROOM_PREFIX = "GAME_ROOM_NO_"
-
-REMOVE_GAME_FROM_LOBBY = "removeLobbyGame"
-GAME_CANCELLED = "gameCancelled"
-WAITING_FOR_PLAYERS = "waitingForPlayers"
-ADD_LOBBY_GAME = "addLobbyGame"
-CLEAR_LOBBY_GAMES = "clearLobbyGames"
-JOIN_LOBBY_GAME = "joinLobbyGame"
-UPDATE_WAITING_MESSAGE = "updateWaitingMessage"
-LEAVE_LOBBY_GAME = "leaveLobbyGame"
