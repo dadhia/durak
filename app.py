@@ -4,12 +4,13 @@ from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_socketio import SocketIO, emit
-from flask_socketio import join_room, leave_room
+from flask_socketio import join_room, leave_room, disconnect
 from forms.user_forms import LoginForm, RegistrationForm
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
 from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, INVALID_LOGIN, LOBBY_ROOM_NAME
+from constants import REMOVE_GAME_FROM_LOBBY, GAME_CANCELLED, WAITING_FOR_PLAYERS
 from util import get_game_room_name
 import os
 
@@ -33,6 +34,8 @@ from models.user import User
 from models.game import Game
 from models.game_played import GamePlayed
 db.create_all()
+
+from db_operations import cancel_game, get_user
 
 lobby_games = []
 
@@ -91,6 +94,7 @@ def console():
 @app.route('/console/logout/', methods=['GET'])
 @login_required
 def logout():
+    # TODO force a disconnect
     logout_user()
     return redirect(url_for('index'))
 
@@ -114,10 +118,10 @@ def new_game(num_players):
 
     lobby_games.append(game)
     game_room_name = get_game_room_name(game.id)
-    join_room(game_room_name)
     leave_room(LOBBY_ROOM_NAME)
+    join_room(game_room_name)
 
-    emit('waitingForPlayers', (num_players, '1', game.id))
+    emit(WAITING_FOR_PLAYERS, (num_players, '1', game.id, True))
     open_spots = int(num_players) - 1
     emit('addToOpenGamesTable', (current_user.email, num_players, open_spots, True, game.id), room=LOBBY_ROOM_NAME)
 
@@ -144,15 +148,41 @@ Remove any game that this user has created (should only be one) and broadcast th
 @socketio.on('disconnect')
 @login_required
 def disconnect():
+    print("Disconnecting...")
+    print(len(lobby_games))
     for game in lobby_games:
         if game.game_creator == current_user.id:
-            game.cancelled = True
-            game_to_cancel = Game.query.filter_by(Game.id == game.id).first()
-            game_to_cancel.cancelled = True
-            db.session.commit()
-            lobby_games.remove(game)
-            emit('removeFromOpenGamesTable', game.id, room=LOBBY_ROOM_NAME)
-            # TODO identify any users which have joined and remove them as well
+            delete_lobby_game(game)
+            break
+    print(len(lobby_games))
+
+
+"""
+Cancels a game that a user has created in the game lobby. Moves user from the room for that game into the lobby.
+"""
+@socketio.on('cancelLobbyGame')
+@login_required
+def cancel_lobby_game(game_id):
+    for game in lobby_games:
+        if game.id == game_id:
+            delete_lobby_game(game)
+            break
+    join_room(LOBBY_ROOM_NAME)
+
+
+"""
+Deletes a game from the list of lobby games, removing the current_user from the room for that game and sending the
+following two messages:
+REMOVE_GAME_FROM_LOBBY to all users in the lobby.
+GAME_CANCELLED to any user in that game's room.
+"""
+def delete_lobby_game(game):
+    game.cancelled = True
+    cancel_game(game.id)
+    lobby_games.remove(game)
+    leave_room(get_game_room_name(game.id))
+    emit(REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
+    emit(GAME_CANCELLED, room=get_game_room_name(game.id))
 
 
 """
@@ -160,7 +190,7 @@ User loader for flask login manager.
 """
 @login_manager.user_loader
 def user_loader(user_id):
-    return User.query.filter(User.id == int(user_id)).first()
+    return get_user(user_id)
 
 
 """
