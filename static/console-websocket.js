@@ -14,6 +14,12 @@ function clearLobbyGamesTable() {
     $('#openGamesTable').find('tr:gt(0)').remove();
 }
 
+function updateWaitingMessage(numPlayers, playersJoined, gameID) {
+    $('#loadingText').text("You have joined game #" + gameID + ". " + playersJoined + " players have " +
+            "joined. Waiting for " + (numPlayers - playersJoined) + " more players to join.");
+    $('#logoutWarning').text("If you logout, you will cancel this game!");
+}
+
 $(document).ready(function() {
     var socket = io.connect('http://127.0.0.1:5000');
 
@@ -22,9 +28,7 @@ $(document).ready(function() {
     });
 
     socket.on('waitingForPlayers', function(numPlayers, playersJoined, gameID, abilityToCancel) {
-        $('#loadingText').text("You have joined game #" + gameID + ". " + playersJoined + " players have " +
-            "joined. Waiting for " + (numPlayers - playersJoined) + " more players to join.");
-        $('#logoutWarning').text("If you logout, you will cancel this game!");
+        updateWaitingMessage(numPlayers, playersJoined, gameID);
         if (abilityToCancel) {
             $('#cancelOrLeaveGameButton').text('Cancel Game');
             $('#cancelOrLeaveGameButton').on('click', function() {
@@ -34,9 +38,16 @@ $(document).ready(function() {
             });
         } else {
             $('#cancelOrLeaveGameButton').text('Leave Game');
+            $('#cancelOrLeaveGameButton').on('click', function() {
+                socket.emit('leaveLobbyGame', gameID);
+                clearLobbyGamesTable();
+                lobbyView();
+            })
         }
         joinedGameView();
     });
+
+    socket.on('updateWaitingMessage', updateWaitingMessage);
 
     socket.on('addLobbyGame', function(email, numPlayers, remainingSpots, gameID) {
         var buttonID = 'joinGame' + gameID;
@@ -45,7 +56,7 @@ $(document).ready(function() {
             '<button type="button" class="btn btn-primary" id="' +  buttonID + '">Join</button></td>';
         $('#openGamesTable').append(nextRow);
         $('#' + buttonID).on('click', function() {
-            socket.emit('joinGame', gameID);
+            socket.emit('joinLobbyGame', gameID);
         });
     });
 

@@ -4,13 +4,14 @@ from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_socketio import SocketIO, emit
-from flask_socketio import join_room, leave_room, disconnect
+from flask_socketio import join_room, leave_room
 from forms.user_forms import LoginForm, RegistrationForm
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
-from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, INVALID_LOGIN, LOBBY_ROOM_NAME
-from constants import REMOVE_GAME_FROM_LOBBY, GAME_CANCELLED, WAITING_FOR_PLAYERS, ADD_LOBBY_GAME
+from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, LOBBY_ROOM_NAME
+import constants
+from constants import UPDATE_WAITING_MESSAGE
 from util import get_game_room_name
 import os
 
@@ -35,7 +36,7 @@ from models.game import Game
 from models.game_played import GamePlayed
 db.create_all()
 
-from db_operations import cancel_game, get_user, insert_new_game, add_user_to_game
+from db_operations import cancel_game, get_user, insert_new_game, add_user_to_game, get_game
 
 lobby_games = []
 
@@ -114,9 +115,9 @@ def new_game(num_players):
     leave_room(LOBBY_ROOM_NAME)
     join_room(game_room_name)
 
-    emit(WAITING_FOR_PLAYERS, (num_players, '1', game.id, True))
+    emit(constants.WAITING_FOR_PLAYERS, (num_players, '1', game.id, True))
     open_spots = int(num_players) - 1
-    emit(ADD_LOBBY_GAME, (current_user.email, num_players, open_spots, game.id), room=LOBBY_ROOM_NAME)
+    emit(constants.ADD_LOBBY_GAME, (current_user.email, num_players, open_spots, game.id), room=LOBBY_ROOM_NAME)
 
 
 """
@@ -158,6 +159,25 @@ def cancel_lobby_game(game_id):
     send_all_lobby_games()
 
 
+@socketio.on(constants.JOIN_LOBBY_GAME)
+@login_required
+def join_lobby_game(game_id):
+    success = add_user_to_game(current_user.id, game_id)
+    if success:
+        leave_room(LOBBY_ROOM_NAME)
+        game = get_game(game_id)
+        emit(constants.WAITING_FOR_PLAYERS, (game.num_players, game.players_joined, game.id, False))
+        emit(UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id), room=get_game_room_name(game_id))
+        join_room(get_game_room_name(game_id))
+
+
+@socketio.on(constants.LEAVE_LOBBY_GAME)
+@login_required
+def leave_lobby_game(game_id):
+    # TODO implement a user leaving a lobby game that they have joined
+    pass
+
+
 """
 Deletes a game from the list of lobby games, removing the current_user from the room for that game and sending the
 following two messages:
@@ -169,14 +189,14 @@ def delete_lobby_game(game):
     cancel_game(game.id)
     lobby_games.remove(game)
     leave_room(get_game_room_name(game.id))
-    emit(REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
-    emit(GAME_CANCELLED, room=get_game_room_name(game.id))
+    emit(constants.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
+    emit(constants.GAME_CANCELLED, room=get_game_room_name(game.id))
 
 
 def send_all_lobby_games():
     for game in lobby_games:
         game_creator = User.query.filter_by(id=game.game_creator).first()
-        emit(ADD_LOBBY_GAME, (game_creator.email, game.num_players, game.players_joined, game.id))
+        emit(constants.ADD_LOBBY_GAME, (game_creator.email, game.num_players, game.players_joined, game.id))
 
 
 """
