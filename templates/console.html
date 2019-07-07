@@ -51,6 +51,7 @@
 
         <row id="messageBlock">
             <p id="loadingText"></p>
+            <button type="button" class="btn btn-danger" id="cancelOrLeaveGameButton"></button>
             <p id="logoutWarning"></p>
         </row>
 
@@ -67,44 +68,7 @@
             </thead>
         </table>
         </row>
-        <script type="text/javascript">
-            $(document).ready(function() {
-                var socket = io.connect('http://127.0.0.1:5000');
-
-                socket.on('connect', function() {
-                    $('#messageBlock').hide();
-                });
-
-                socket.on('waitingForPlayers', function(numPlayers, playersJoined, gameID) {
-                    $('#createGameBlock').hide();
-                    $('#loadingText').text("You have joined game #" + gameID + ". " + playersJoined + " players have " +
-                            "joined. Waiting for " + (numPlayers - playersJoined) + " more players to join.");
-                    $('#logoutWarning').text("If you logout, you will cancel this game!");
-                    $('#messageBlock').show();
-                    $('#lobby').hide();
-                });
-
-                $('#newGameButton').on('click', function() {
-                    var numPlayers = $('#numPlayers input:radio:checked').val();
-                    socket.emit('newGame', numPlayers);
-                });
-
-                socket.on('addToOpenGamesTable', function(email, numPlayers, remainingSpots, showButton, gameID) {
-                    var buttonID = 'joinGame' + gameID;
-                    var nextRow = "<tr>" + "<td>" + email + "</td>" + "<td>" + numPlayers + "</td>" +
-                        "<td>" + remainingSpots + "</td>" + "<td>";
-                    if (showButton) {
-                        nextRow += '<button type="button" class="btn btn-primary" id="' +  buttonID + '">Join</button>';
-                    }
-                    nextRow += "</td>";
-                    $('#openGamesTable').append(nextRow);
-
-                    $('#' + buttonID).on('click', function() {
-                        socket.emit('joinGame', gameID);
-                    });
-                });
-            });
-         </script>
+        <script type="text/javascript" src="{{ url_for('static', filename = 'console-websocket.js') }}"></script>
         {% endblock %}
     </div>
     {% endblock %}

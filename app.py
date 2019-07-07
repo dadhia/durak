@@ -123,7 +123,7 @@ def new_game(num_players):
 
     emit(WAITING_FOR_PLAYERS, (num_players, '1', game.id, True))
     open_spots = int(num_players) - 1
-    emit('addToOpenGamesTable', (current_user.email, num_players, open_spots, True, game.id), room=LOBBY_ROOM_NAME)
+    emit('addToOpenGamesTable', (current_user.email, num_players, open_spots, game.id), room=LOBBY_ROOM_NAME)
 
 
 """
