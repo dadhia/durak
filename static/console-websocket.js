@@ -17,7 +17,7 @@ function clearLobbyGamesTable() {
 function updateWaitingMessage(numPlayers, playersJoined, gameID) {
     $('#loadingText').text("You have joined game #" + gameID + ". " + playersJoined + " players have " +
             "joined. Waiting for " + (numPlayers - playersJoined) + " more players to join.");
-    $('#logoutWarning').text("If you logout, you will cancel this game!");
+    $('#logoutWarning').text("If you logout, you will cancel or leave this game!");
 }
 
 function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
@@ -30,12 +30,15 @@ function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
         socket.emit('joinLobbyGame', gameID);
     });
 }
+var joinedGameID = 0;
 
 $(document).ready(function() {
     var socket = io.connect('http://127.0.0.1:5000');
 
     socket.on('connect', function() {
+        console.log("received connect message");
         lobbyView();
+        console.log("sending a requestAllLobbyGamesRequest");
         socket.emit('requestAllLobbyGames');
     });
 
@@ -46,39 +49,48 @@ $(document).ready(function() {
     }
 
     socket.on('waitingForPlayers', function(numPlayers, playersJoined, gameID, abilityToCancel) {
+        console.log("waiting for players message received...");
         updateWaitingMessage(numPlayers, playersJoined, gameID);
+        joinedGameID = gameID;
         if (abilityToCancel) {
-            $('#cancelOrLeaveGameButton').text('Cancel Game');
-            $('#cancelOrLeaveGameButton').on('click', function() {
-                socket.emit('cancelLobbyGame', gameID);
-                returnToLobby();
-            });
+            $('#leaveGameButton').hide();
+            $('#cancelGameButton').show();
         } else {
-            $('#cancelOrLeaveGameButton').text('Leave Game');
-            $('#cancelOrLeaveGameButton').on('click', function() {
-                socket.emit('leaveLobbyGame', gameID);
-                returnToLobby();
-            })
+            $('#leaveGameButton').show();
+            $('#cancelGameButton').hide();
         }
         joinedGameView();
     });
 
+    socket.on('returnToLobby', function() {
+        console.log("return to lobby request received");
+        returnToLobby();
+    });
+
     socket.on('updateWaitingMessage', updateWaitingMessage);
 
-    socket.on('$gameCancelled', function() {
+    socket.on('$gameCancelled', function(gameID) {
+       console.log("got a game cancelled message for game id = " + gameID);
        clearLobbyGamesTable();
        lobbyView();
+       console.log("requesting to rejoin the lobby...");
+       socket.send('rejoingLobby');
+       console.log("requesting all lobby games...");
+       socket.emit('requestAllLobbyGames');
     });
 
     socket.on('addLobbyGame', function(email, numPlayers, spotsRemaining, gameID) {
+        console.log("Adding lobby game with ID = " + gameID + " and spots remaining = " + spotsRemaining);
         addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket);
     });
 
     socket.on('populateLobbyGames', function(lobbyGamesList) {
+        console.log("Got populate lobby games message with " + lobbyGamesList.length + " games.");
         for (let i = 0; i < lobbyGamesList.length; i++) {
             let game = lobbyGamesList[i];
             addSingleLobbyGame(game[0], game[1], game[2], game[3], socket);
         }
+        socket.emit('rejoinLobby');
     });
 
     socket.on('removeLobbyGame', function(game_id) {
@@ -86,7 +98,7 @@ $(document).ready(function() {
     });
 
     socket.on('updateLobbyGame', function(remaining_spots, game_id) {
-        console.log("Time to update lobby game!");
+        console.log("Updating lobby game " + game_id + " with " + remaining_spots + " remaining spots");
         $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
     });
 
@@ -95,8 +107,14 @@ $(document).ready(function() {
         socket.emit('newGame', numPlayers);
     });
 
-    $('#logoutButton').on('click', function() {
-        console.log('disconnecting!');
-        socket.emit('disconnect');
+    $('#leaveGameButton').on('click', function() {
+        console.log('leaving lobby game ' + joinedGameID);
+        socket.emit('leaveLobbyGame', joinedGameID);
     });
+
+    $('#cancelGameButton').on('click', function() {
+        console.log("cancelling lobby game " + joinedGameID);
+        socket.emit('cancelLobbyGame', joinedGameID);
+    });
+
 });

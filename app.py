@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask
 from flask import redirect, url_for, render_template
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
@@ -38,7 +38,6 @@ db.create_all()
 import db_operations
 
 lobby_games = {}
-joined_games = {}
 
 
 @app.route('/', methods=['GET'])
@@ -139,11 +138,22 @@ Remove any game that this user has created (should only be one) and broadcast th
 @socketio.on(events.DISCONNECT)
 @login_required
 def disconnect():
-    for game in lobby_games.values():
+    game_id = db_operations.get_game_user_has_joined(current_user.id)
+    print(game_id)
+    if game_id is not None:
+        game = lobby_games[game_id]
         if game.game_creator == current_user.id:
-            delete_lobby_game(game)
-            break
-    # TODO handle the case where the user has simply joined a game but then logs out
+            game.cancelled = True
+            db_operations.cancel_game(game.id)
+            del lobby_games[game.id]
+            emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
+            emit(events.RETURN_TO_LOBBY, room=room_manager.get_room_name(game.id))
+        else:
+            db_operations.remove_user_from_game(current_user.id, game_id)
+            emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id), room=LOBBY_ROOM_NAME)
+            emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
+                 room=room_manager.get_room_name(game_id))
+
 
 
 """
@@ -153,12 +163,18 @@ Cancels a game that a user has created in the game lobby. Moves user from the ro
 @login_required
 def cancel_lobby_game(game_id):
     game = lobby_games[game_id]
-    delete_lobby_game(game)
+    game.cancelled = True
+    db_operations.cancel_game(game.id)
+    del lobby_games[game.id]
+
+    emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
+    emit(events.RETURN_TO_LOBBY, room=room_manager.get_room_name(game.id))
 
 
 @socketio.on(events.JOIN_LOBBY_GAME)
 @login_required
 def join_lobby_game(game_id):
+    print("Joining lobby game with game_id = " + str(game_id) + " and user_id = " + str(current_user.id))
     success = db_operations.add_user_to_game(current_user.id, game_id)
     if success:
         game = db_operations.get_game(game_id)
@@ -178,7 +194,7 @@ def leave_lobby_game(game_id):
     emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id), room=LOBBY_ROOM_NAME)
     emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
          room=room_manager.get_room_name(game_id))
-    room_manager.rejoin_lobby(game_id, current_user.id)
+    emit(events.RETURN_TO_LOBBY)
 
 
 @socketio.on(events.REQUEST_ALL_LOBBY_GAMES)
@@ -191,6 +207,12 @@ def request_all_lobby_games():
         lobby_games_list.append((game_creator.email, game.num_players, open_spots, game.id))
     emit(events.POPULATE_LOBBY_GAMES, lobby_games_list)
 
+
+@socketio.on(events.REJOIN_LOBBY)
+@login_required
+def rejoin_lobby():
+    print(str(current_user.id) + " is requesting to rejoin the lobby.")
+    room_manager.rejoin_lobby(current_user.id)
 
 
 """
@@ -205,7 +227,7 @@ def delete_lobby_game(game):
     del lobby_games[game.id]
 
     emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
-    room_manager.rejoin_lobby(game.id, current_user.id)
+    room_manager.rejoin_lobby(current_user.id)
     emit(events.GAME_CANCELLED, room=room_manager.get_room_name(game.id))
 
 
