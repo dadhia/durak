@@ -39,7 +39,6 @@ import db_operations
 
 lobby_games = {}
 
-
 @app.route('/', methods=['GET'])
 def index():
     if current_user.is_authenticated:
@@ -178,12 +177,17 @@ def join_lobby_game(game_id):
     success = db_operations.add_user_to_game(current_user.id, game_id)
     if success:
         game = db_operations.get_game(game_id)
-        emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
-             room=room_manager.get_room_name(game_id))
-        emit(events.WAITING_FOR_PLAYERS, (game.num_players, game.players_joined, game.id, False))
-        room_manager.move_to_room(game_id, current_user.id)
-        emit(events.UPDATE_LOBBY_GAME, (game.num_players-game.players_joined, game.id),
-             room=room_manager.get_lobby_name())
+        if game.num_players == game.players_joined:
+            room_manager.move_to_room(game_id, current_user.id)
+            emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=room_manager.get_lobby_name())
+            emit(events.START_GAME, game.id, room=room_manager.get_room_name(game.id))
+        else:
+            emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
+                 room=room_manager.get_room_name(game_id))
+            emit(events.WAITING_FOR_PLAYERS, (game.num_players, game.players_joined, game.id, False))
+            room_manager.move_to_room(game_id, current_user.id)
+            emit(events.UPDATE_LOBBY_GAME, (game.num_players-game.players_joined, game.id),
+                 room=room_manager.get_lobby_name())
 
 
 @socketio.on(events.LEAVE_LOBBY_GAME)

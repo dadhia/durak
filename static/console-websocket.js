@@ -2,12 +2,24 @@ function joinedGameView() {
     $('#messageBlock').show();
     $('#createGameBlock').hide();
     $('#lobby').hide();
+    $('#game').hide();
+    $('#card-table').hide();
 }
 
 function lobbyView() {
     $('#messageBlock').hide();
     $('#createGameBlock').show();
     $('#lobby').show();
+    $('#game').hide();
+    $('#card-table').hide();
+}
+
+function gameView() {
+    $('#messageBlock').hide();
+    $('#createGameBlock').hide();
+    $('#lobby').hide();
+    $('#game').show();
+    $('#card-table').hide();
 }
 
 function clearLobbyGamesTable() {
@@ -100,6 +112,11 @@ $(document).ready(function() {
     socket.on('updateLobbyGame', function(remaining_spots, game_id) {
         console.log("Updating lobby game " + game_id + " with " + remaining_spots + " remaining spots");
         $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
+    });
+
+    socket.on('startGame', function(game_id) {
+        console.log("Starting game with id = " + game_id);
+        gameView();
     });
 
     $('#newGameButton').on('click', function() {
