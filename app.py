@@ -4,7 +4,6 @@ from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_socketio import SocketIO, emit
-from flask_socketio import join_room, leave_room
 from forms.user_forms import LoginForm, RegistrationForm
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
