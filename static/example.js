@@ -54,8 +54,3 @@ lowerhand.click(function(card){
 		lowerhand.render();
 	}
 });
-
-
-//So, that should give you some idea about how to render a card game.
-//Now you just need to write some logic around who can play when etc...
-//Good luck :)

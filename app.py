@@ -38,6 +38,7 @@ db.create_all()
 import db_operations
 
 lobby_games = {}
+started_games = {}
 
 @app.route('/', methods=['GET'])
 def index():
@@ -178,6 +179,9 @@ def join_lobby_game(game_id):
     if success:
         game = db_operations.get_game(game_id)
         if game.num_players == game.players_joined:
+            lobby_games[game_id].started = True
+            started_games[game_id] = lobby_games[game_id]
+            del lobby_games[game_id]
             room_manager.move_to_room(game_id, current_user.id)
             emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=room_manager.get_lobby_name())
             emit(events.START_GAME, game.id, room=room_manager.get_room_name(game.id))
@@ -217,22 +221,6 @@ def request_all_lobby_games():
 def rejoin_lobby():
     print(str(current_user.id) + " is requesting to rejoin the lobby.")
     room_manager.rejoin_lobby(current_user.id)
-
-
-"""
-Deletes a game from the list of lobby games, removing the current_user from the room for that game and sending the
-following two messages:
-REMOVE_GAME_FROM_LOBBY to all users in the lobby.
-GAME_CANCELLED to any user in that game's room.
-"""
-def delete_lobby_game(game):
-    game.cancelled = True
-    db_operations.cancel_game(game.id)
-    del lobby_games[game.id]
-
-    emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
-    room_manager.rejoin_lobby(current_user.id)
-    emit(events.GAME_CANCELLED, room=room_manager.get_room_name(game.id))
 
 
 """

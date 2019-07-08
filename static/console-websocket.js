@@ -3,7 +3,6 @@ function joinedGameView() {
     $('#createGameBlock').hide();
     $('#lobby').hide();
     $('#game').hide();
-    $('#card-table').hide();
 }
 
 function lobbyView() {
@@ -11,7 +10,6 @@ function lobbyView() {
     $('#createGameBlock').show();
     $('#lobby').show();
     $('#game').hide();
-    $('#card-table').hide();
 }
 
 function gameView() {
@@ -19,7 +17,6 @@ function gameView() {
     $('#createGameBlock').hide();
     $('#lobby').hide();
     $('#game').show();
-    $('#card-table').hide();
 }
 
 function clearLobbyGamesTable() {
@@ -36,7 +33,7 @@ function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
     var buttonID = 'joinGame' + gameID;
     var nextRow = "<tr id='" + gameID + "'>" + "<td>" + email + "</td>" + "<td>" + numPlayers + "</td>" +
             "<td>" + spotsRemaining + "</td>" + "<td>" +
-            '<button type="button" class="btn btn-primary" id="' +  buttonID + '">Join</button></td>';
+            '<button type="button" class="btn-primary" id="' +  buttonID + '">Join</button></td>';
     $('#openGamesTable').append(nextRow);
     $('#' + buttonID).on('click', function() {
         socket.emit('joinLobbyGame', gameID);
