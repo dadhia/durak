@@ -5,13 +5,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="{{ url_for('static', filename='durak-game.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-    <link rel="stylesheet" href="{{ url_for('static', filename='console.css') }}"/>
     {% block additional_stylesheets %}
     {% endblock %}
     <title>Durak</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.js" integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU=" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='fabric-3.0.js') }}"></script>
 </head>
 {% endblock %}
 
@@ -34,12 +35,10 @@
         {% endblock %}
     </nav>
     {% endblock %}
-
-    <img class="preload" src="{{ url_for('static', filename='img/cards.png') }}"/>
     {% block main_page_content %}
     <div class="container-fluid">
         {% block page_specific_content %}
-        <row id="createGameBlock">
+        <row id="createGameBlock" style="display: none;">
             <h5>Select number of players for a new game:</h5>
             <div class="btn-group" id="numPlayers">
             <label class="radio-inline"><input type="radio" name="optradio" value="2" checked>   2   </label>
@@ -58,7 +57,7 @@
             <p id="logoutWarning"></p>
         </row>
 
-        <row id="lobby">
+        <row id="lobby" style="display: none;">
             <h5>Or Join a Game in the Lobby:</h5>
             <table class="table" id="openGamesTable">
             <thead>
@@ -71,11 +70,35 @@
             </thead>
         </table>
         </row>
-        <row id="game" style="display: none;">
-			<canvas id="canvas" width="700" height="600">
-            </canvas>
-        </row>
-        <script type="text/javascript" src="{{ url_for('static', filename = 'console-websocket.js') }}"></script>
+        <div id="game">
+            <row id="GameStatus">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Game ID</th>
+                            <th>Number of Players</th>
+                            <th>On Attack</th>
+                            <th>On Defense</th>
+                            <th>Your Status</th>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>4</td>
+                            <td>devan@adhiafunds.com</td>
+                            <td>devan@random.com</td>
+                            <td>Attacking</td>
+                        </tr>
+                    </thead>
+                </table>
+            </row>
+            <row id="game" style="">
+                <canvas id="durak-table" width="700" height="600" class="durak-table-style">
+                </canvas>
+            </row>
+        </div>
+
+
+        <script type="text/javascript" src="{{ url_for('static', filename = 'console-websocket-game.js') }}"></script>
         {% endblock %}
     </div>
     {% endblock %}
@@ -84,8 +107,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
     {% endblock %}
-    <script src="{{ url_for('static', filename='cards.js') }}"></script>
-    <script src="{{ url_for('static', filename = 'example.js') }}"></script>
 </body>
 {% endblock %}
 </html>
