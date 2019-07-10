@@ -1,134 +1,203 @@
-var remainingCardsDeck;
+var canvas;
 var cardsRemainingText;
+var cardsDiscardedText;
+var cards = {};
+var deckLocation = generateLocation(170, 330);
+var trumpLocation = generateLocation(220, 330);
+var discardLocation= generateLocation(440, 330);
+var attackSquareLocations = new Array(6);
+var defenseSquareLocations = new Array(6);
+var chairLocations = [generateLocation(430, 95), generateLocation(675, 15), generateLocation(890, 95),
+    generateLocation(890, 410), generateLocation(675, 505), generateLocation(430, 410)];
+var playerIndices = [[1, 4], [0, 2, 4], [0, 2, 3, 5], [0, 1, 2, 3, 5], [0, 1, 2, 3, 4, 5]];
+var trumpCard;
 
-function generateBackgroundGraphics(canvas) {
-    var background = new fabric.Rect({
-        left: 0,
-        top: 0,
-        fill: '#004C00',
-        width: 700,
-        height: 600,
+var firstCardLocation = generateLocation(80, 630);
+
+for (let i = 0; i < 6; i++) {
+    let leftCoordinate = 535 + (i * 60);
+    attackSquareLocations[i] = generateLocation(leftCoordinate, 160);
+    defenseSquareLocations[i] = generateLocation(leftCoordinate, 240);
+}
+
+function generateBackgroundGraphics() {
+    var background = generateRect(generateLocation(0, 0), '#004C00', 1400, 600);
+    var handBackground = generateRect(generateLocation(0, 600), '#BE9B7B', 1400, 200);
+    var table = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
+    var attackSquares = new Array(6);
+    var defenseSquares = new Array(6);
+    for (let i = 0; i < 6; i++) {
+        attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56);
+        defenseSquares[i] = generateRect(defenseSquareLocations[i],'#4C814C', 40, 56);
+    }
+    var attackText = generateTextObject('Attack', generateLocation(680, 120), 20);
+    var defenseText = generateTextObject('Defense', generateLocation(680, 300), 20);
+    var yourHandText = generateTextObject('Your Hand:', generateLocation(0, 600), 20);
+    canvas.add(background, table);
+    canvas.add(handBackground);
+    for (let i = 0; i < 6; i ++) {
+        canvas.add(attackSquares[i], defenseSquares[i]);
+    }
+    canvas.add(attackText, defenseText);
+    canvas.add(yourHandText);
+}
+
+function generateChairs(numPlayers) {
+    for (let i = 0; i < numPlayers; i++) {
+        const location = chairLocations[playerIndices[numPlayers-2][i]];
+        const chair = generateCircle(location, '#A40B0B', 40);
+        canvas.add(chair);
+    }
+}
+
+function generateLocation(left, top) {
+    return {left: left, top: top};
+}
+
+function generateCircle(location, fill, radius) {
+    return new fabric.Circle({
+        left: location.left,
+        top: location.top,
+        fill: fill,
+        radius: radius,
         selectable: false
-    });
-    var table = new fabric.Ellipse({
-        left: 350,
-        top: 300,
+    })
+}
+
+function generateEllipse(location, stroke, fill, rx, ry) {
+    return new fabric.Ellipse({
+        left: location.left,
+        top: location.top,
         strokeWidth: 1,
-        stroke: 'black',
-        fill: '#BE9B7B',
+        stroke: stroke,
+        fill: fill,
         selectable: false,
         originX: 'center',
         originY: 'center',
-        rx: 250,
-        ry: 200
+        rx: rx,
+        ry: ry
     });
-    var attackAndDefenseSquares = new Array(12);
-    for (let i = 0; i < 2; i += 1) {
-        for (let j = 0; j < 6; j += 1) {
-            square = new fabric.Rect({
-                left: 185 + (j * 60),
-                top: 160 + (i * 80),
-                fill: '#4C814C',
-                width: 40,
-                height: 56,
-                selectable: false
-            });
-            attackAndDefenseSquares[i * 6 + j] = square;
-        }
-    }
-    var attackText = new fabric.Text('Attack', {
-          fontFamily: 'sans-serif',
-          left: 320,
-          top: 120,
-          fontSize: 20,
-          textAlign: "left",
-          fill:"#A40B0B"
+}
+
+function generateRect(location, fill, width, height) {
+    return new fabric.Rect({
+        left: location.left,
+        top: location.top,
+        fill: fill,
+        width: width,
+        height: height,
+        selectable: false
     });
-    var defenseText = new fabric.Text('Defense', {
+}
+
+function generateTextObject(text, location, fontSize) {
+    return new fabric.Text(text, {
         fontFamily: 'sans-serif',
-        left: 320,
-        top: 300,
-        fontSize: 20,
-        textAlign: "left",
-        fill:"#A40B0B"
+        left: location.left,
+        top: location.top,
+        fontSize: fontSize,
+        textAlign: 'left',
+        fill:'#A40B0B',
+        selectable: false
     });
-
-    canvas.add(background);
-    canvas.add(table);
-    for (let i = 0; i < 12; i += 1) {
-        canvas.add(attackAndDefenseSquares[i]);
-    }
-    canvas.add(attackText, defenseText);
 }
 
-function generateChairs(canvas, num_players) {
-    var chair1 = new fabric.Circle({
-       radius: 40,  fill: '#A40B0B', left:325, top:15
-    });
-    var chair2 = new fabric.Circle({
-        radius: 40, fill: '#A40B0B', left: 80, top: 95
-    });
-    var chair3 = new fabric.Circle({
-        radius: 40, fill: '#A40B0B', left: 540, top: 95
-    });
-
-    var chair4 = new fabric.Circle({
-        radius: 40, fill: '#A40B0B', left: 80, top: 410
-    });
-    var chair5 = new fabric.Circle({
-        radius: 40, fill: '#A40B0B', left: 540, top: 410
-    });
-    var chair6 = new fabric.Circle({
-        radius: 40, fill:'#A40B0B', left: 325, top: 505
-    });
-    canvas.add(chair1);
-    canvas.add(chair2);
-    canvas.add(chair3);
-    canvas.add(chair4);
-    canvas.add(chair5);
-    canvas.add(chair6);
-}
-
-function drawDeck(canvas) {
-    var backImage = document.getElementById('card-back-image');
-    remainingCardsDeck = new fabric.Image(backImage, {
-        left: 200,
-        top: 330
-
-    });
-    remainingCardsDeck.scale(0.3);
-    canvas.add(remainingCardsDeck);
-}
-
-function drawCardsRemaining(canvas) {
-    cardsRemainingText = new fabric.Text('Cards Remaining: 20', {
-        fontFamily: 'sans-serif',
-        left: 160,
-        top: 390,
-        fontSize: 12,
-        textAlign: "left",
-        fill:"#A40B0B"
-    });
+function drawStatusText() {
+    cardsRemainingText = generateTextObject('Cards Remaining: 00', generateLocation(510, 390), 12);
     canvas.add(cardsRemainingText);
+    cardsDiscardedText = generateTextObject('Cards Discarded: 00', generateLocation(750, 390), 12);
+    canvas.add(cardsDiscardedText);
 }
 
-function updateCardsRemaining(canvas, numCards) {
+function updateCardsRemaining(numCards) {
     cardsRemainingText.text = 'Cards Remaining: ' + numCards;
 }
 
-$(document).ready(function() {
-    var canvas = new fabric.Canvas('durak-table');
-    generateBackgroundGraphics(canvas);
-    generateChairs(canvas, 1);
+function generateCardObject(id) {
+    var image = document.getElementById('card-' + id);
+    var cardCanvasObject = new fabric.Image(image, {selectable: false});
+    cardCanvasObject.scale(0.3);
+    return cardCanvasObject;
+}
 
-    var basicCard = document.getElementById('my-image');
-    var imgInstance = new fabric.Image(basicCard, {
-        left: 185,
-        top: 220,
-    });
-    imgInstance.scale(0.3);
-    canvas.add(imgInstance);
-    drawDeck(canvas);
-    drawCardsRemaining(canvas);
-    updateCardsRemaining(canvas, 10);
+function pregenerateCardObjects() {
+    let suits = 'cdhs';
+    let royals = 'jqka';
+    for (let suitIndex = 0; suitIndex < suits.length; suitIndex++) {
+        for (let i = 2; i < 11; i ++) {
+            let cardString = String(suits.charAt(suitIndex)) + String(i);
+            cards[cardString] = generateCardObject(cardString);
+        }
+        for (let i = 0; i < royals.length; i++) {
+            let cardString = String(suits.charAt(suitIndex)) + String(royals.charAt(i));
+            cards[cardString] = generateCardObject(cardString);
+        }
+    }
+    cards['deck'] = generateCardObject('back');
+    cards['discard'] = generateCardObject('back');
+}
+
+function drawCard(card, location) {
+    cards[card].set(location);
+    canvas.add(cards[card]);
+}
+
+function eraseCard(card) {
+    canvas.remove(cards[card]);
+}
+
+function drawTrumpCard(card) {
+    drawCard(card, trumpLocation);
+    trumpCard = card;
+}
+
+function drawDeck() {
+    drawCard('deck', deckLocation);
+}
+
+function drawDiscard() {
+    drawCard('discard', discardLocation);
+}
+
+function eraseDeck() {
+    eraseCard('deck');
+}
+
+function eraseDiscard() {
+    eraseCard('discard');
+}
+
+function eraseTrumpCard() {
+    eraseCard(trumpCard);
+}
+
+function prepareCanvas(numPlayers) {
+    canvas = new fabric.Canvas('durak-table');
+    pregenerateCardObjects();
+    generateBackgroundGraphics();
+    generateChairs(numPlayers);
+    drawStatusText();
+}
+
+function placeCardInHand(card, position) {
+    let left = firstCardLocation.left + (position * 42);
+    let top = firstCardLocation.top;
+    if (position > 25) {
+        top += 60;
+        left -= 26 * 42;
+    }
+    const location = generateLocation(left, top);
+    console.log(location);
+    drawCard(card, location);
+}
+
+$(document).ready(function() {
+    prepareCanvas(6);
+    placeCardInHand('ca', 0);
+    placeCardInHand('c2', 1);
+    placeCardInHand('da', 10);
+    placeCardInHand('d10', 25);
+    placeCardInHand('d9', 26);
+    placeCardInHand('d3', 27);
+    placeCardInHand('d4', 51);
 });
