@@ -18,6 +18,8 @@
 
 {% block body %}
 <body>
+    <img src="{{ url_for('static', filename='playing_cards/simple_c_2.svg') }}" id="my-image" style="display: none;">
+    <img src="{{ url_for('static', filename='playing_cards/back.svg') }}" id="card-back-image" style="display: none;">
     {% block above_navbar_content %}
     {% endblock %}
     {% block navbar %}
