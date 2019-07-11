@@ -84,6 +84,11 @@ class InProgressGame:
             sort_value += 14
         return sort_value
 
+    def __send_on_attack_message(self):
+        on_defense_user_email = self.player_info[self.defense_index].email
+        on_attack_user_id = self.player_info[self.attack_index].id
+        emit(events.USER_ON_ATTACK, on_defense_user_email, room=session_manager.get_session_id(on_attack_user_id))
+
 
 """
 This class manages the durak deck from construction, to drawing cards, to discarding cards.
