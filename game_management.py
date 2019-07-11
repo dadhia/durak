@@ -10,7 +10,7 @@ class InProgressGame:
     def __init__(self, game):
         self.game = game
         self.player_info = db_operations.get_players_in_game(game.id)
-        # TODO add seat position into database for statistical purposes
+        # TODO add seat position into database for statistical purposes - may also be useful for AI training
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
         print(self.session_ids)
@@ -47,6 +47,8 @@ class InProgressGame:
         self.__sort_and_display_updated_hands()
         self.__display_trump_card()
         self.__display_trump_suit()
+        self.__send_on_attack_message()
+        self.__display_cards_remaining()
 
     def __set_defense_index(self):
         self.defense_index = (self.attack_index + 1) % self.game.num_players
@@ -74,7 +76,8 @@ class InProgressGame:
              room=room_manager.get_room_name(self.game.id))
 
     def __display_trump_suit(self):
-        emit(events.DISPLAY_TRUMP_SUIT, self.trump_suit, room=room_manager.get_room_name(self.game.id))
+        suit = SUIT_TO_FULL_NAME[self.trump_suit]
+        emit(events.DISPLAY_TRUMP_SUIT, suit, room=room_manager.get_room_name(self.game.id))
 
     def __hand_sorter(self, card):
         card_suit = card[0]
@@ -87,7 +90,22 @@ class InProgressGame:
     def __send_on_attack_message(self):
         on_defense_user_email = self.player_info[self.defense_index].email
         on_attack_user_id = self.player_info[self.attack_index].id
+        on_attack_user_email = self.player_info[self.attack_index].email
         emit(events.USER_ON_ATTACK, on_defense_user_email, room=session_manager.get_session_id(on_attack_user_id))
+        emit(events.OTHER_USER_ATTACKING, )
+
+    def __send_on_defense_message(self):
+        on_attack_user_email = self.player_info[self.attack_index].email
+        on_defense_user_id = self.player_info[self.defense_index].id
+        emit(events.USER_ON_DEFENSE, on_attack_user_email, room=session_manager.get_session_id(on_defense_user_id))
+
+    def __get_session_ids(self, exclude_user_id):
+        session_ids = []
+        for player in self.player_info:
+            if player.id != exclude_user_id:
+                session_ids.append(session_manager.get_session_id[player.id])
+        return session_ids
+
 
 
 """

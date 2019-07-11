@@ -2,6 +2,8 @@ var canvas;
 var cardsRemainingText;
 var cardsDiscardedText;
 var attackingStatusText, defendingStatusText, addingStatusText;
+var userStatusText;
+const userStatusTextLocation = generateLocation(2, 500);
 var cards = {};
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
@@ -37,7 +39,7 @@ var defenseSquares = new Array(6);
 function generateBackgroundGraphics() {
     var background = generateRect(generateLocation(0, 0), '#004C00', 1400, 600, String('background'));
     var handBackground = generateRect(generateLocation(0, 600), '#BE9B7B', 1400, 200, String('background'));
-    var messageBackground = generateRect(generateLocation(0, 500), 'black', 200, 200, String('background'));
+    var messageBackground = generateRect(generateLocation(0, 500), 'black', 400, 200, String('background'));
     var table = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
     for (let i = 0; i < 6; i++) {
         attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, 'attack' + i);
@@ -54,6 +56,21 @@ function generateBackgroundGraphics() {
     }
     canvas.add(attackText, defenseText);
     canvas.add(yourHandText);
+}
+
+function generateUserStatusText() {
+
+    userStatusText = generateTextObject('YOUR TURN: Attacking devan@adhiafunds.com', userStatusTextLocation, 15, 'white');
+}
+
+function updateUserStatusText(text) {
+    console.log('updating user status text');
+    userStatusText.text = 'YOUR TURN: ' + text;
+    canvas.add(userStatusText);
+}
+
+function clearUserStatusText() {
+    userStatusText.text = '';
 }
 
 function generateUsernameTexts(numPlayers, names) {
@@ -244,6 +261,7 @@ function prepareCanvas(numPlayers, usernames) {
     generateChairs(numPlayers);
     drawStatusText();
     generateUsernameTexts(numPlayers, usernames);
+    generateUserStatusText();
 }
 
 function drawCardInHand(card, position) {

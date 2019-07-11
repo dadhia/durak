@@ -151,6 +151,11 @@ $(document).ready(function() {
         drawTrumpSuitText(suit);
     });
 
+    socket.on('onAttack', function(defenderEmail) {
+        console.log('Got on attack message with defender email = ' + defenderEmail);
+        updateUserStatusText('Attacking ' + defenderEmail);
+    });
+
     $('#newGameButton').on('click', function() {
         var numPlayers = $('#numPlayers input:radio:checked').val();
         socket.emit('newGame', numPlayers);
