@@ -229,12 +229,14 @@ function eraseTrumpCard() {
     eraseCard(trumpCard);
 }
 
-function prepareCanvas(numPlayers) {
+function prepareCanvas(numPlayers, usernames) {
     canvas = new fabric.Canvas('durak-table');
+    canvas.hoverCursor = 'default';
     pregenerateCardObjects();
     generateBackgroundGraphics();
     generateChairs(numPlayers);
     drawStatusText();
+    generateUsernameTexts(numPlayers, usernames);
 }
 
 function drawCardInHand(card, position) {
@@ -257,30 +259,26 @@ function makeCardSelectable(card) {
     cards[card].set({opacity: 1.0});
 }
 
-$(document).ready(function() {
-    prepareCanvas(6);
-    drawCardInHand('ca', 0);
-    drawCardInHand('c2', 1);
-    drawCardInHand('da', 10);
-    drawCardInHand('d10', 25);
-    drawCardInHand('d9', 26);
-    drawCardInHand('d3', 27);
-    drawCardInHand('d4', 51);
-    eraseCard('d4');
-    generateUsernameTexts(6, ['devan@adhiafunds.com', 'devan@adhiafunds.com', 'devan@adhiafunds.com',
-    'devan@adhiafunds.com', 'devan@adhiafunds.com', 'devan@adhiafunds.com']);
-    generatePlayersStatusTexts();
-    drawAttacking(6, 1);
-    drawDefending(6, 2);
-    drawAdding(6, 0);
+function closeAttackSquares(squares) {
+    for (let i = 0; i < squares.length; i++) {
+        attackSquares[squares[i]].set({opacity: 0.4});
+    }
+}
 
-    canvas.on('mouse:down', function(options) {
-        if (options.target) {
-            let type = options.target.type;
-            if (type === 'image' || type === 'rect') {
-                console.log(options.target.id);
-            }
-        }
-    });
+function closeDefenseSquares(squares) {
+    for (let i = 0; i < squares.length; i++) {
+        defenseSquares[squares[i]].set({opacity: 0.4});
+    }
+}
 
-});
+function openDefenseSquares(squares) {
+    for (let i = 0; i < squares.length; i++) {
+        defenseSquares[squares[i]].set({opacity: 1.0});
+    }
+}
+
+function openAttackSquares(squares) {
+    for (let i = 0; i < squares.length; i++) {
+        attackSquares[squares[i]].set({opacity: 1.0});
+    }
+}

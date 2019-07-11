@@ -3,3 +3,5 @@ INVALID_LOGIN = "Sorry. We couldn't log you in. Please check your username and p
 DUPLICATE_EMAIL = "Sorry. That username is already registered."
 LOBBY_ROOM_NAME = "LOBBY"
 GAME_ROOM_PREFIX = "GAME_ROOM_NO_"
+
+NUM_PLAYERS_TO_LOWEST_CARD = {2: 6, 3: 6, 4: 6, 5: 6, 6: 6}

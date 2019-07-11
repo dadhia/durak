@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask import redirect, url_for, render_template
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
 from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, LOBBY_ROOM_NAME
-import room_manager
+import room_manager, session_manager
 import events
 import os
 
@@ -36,9 +36,18 @@ db.create_all()
 
 
 import db_operations
+import game_management
 
 lobby_games = {}
 started_games = {}
+in_progress_games = {}
+
+
+@app.route('/game/', methods=['GET'])
+def get_game():
+    return render_template('console-game.html',
+                           email='THIS IS A TEST ENVIRONMENT')
+
 
 @app.route('/', methods=['GET'])
 def index():
@@ -106,6 +115,7 @@ We will send them all available games for them to join.
 @socketio.on(events.CONNECT)
 @login_required
 def connect():
+    session_manager.add_session_id(current_user.id, request.sid)
     room_manager.join_lobby()
     # TODO - are they already in a game?
 
@@ -153,7 +163,7 @@ def disconnect():
             emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id), room=LOBBY_ROOM_NAME)
             emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
                  room=room_manager.get_room_name(game_id))
-
+    session_manager.remove_session_id(current_user.id)
 
 
 """
@@ -182,9 +192,10 @@ def join_lobby_game(game_id):
             lobby_games[game_id].started = True
             started_games[game_id] = lobby_games[game_id]
             del lobby_games[game_id]
+            db_operations.set_game_started_true(game_id)
             room_manager.move_to_room(game_id, current_user.id)
             emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=room_manager.get_lobby_name())
-            emit(events.START_GAME, game.id, room=room_manager.get_room_name(game.id))
+            in_progress_games[game_id] = game_management.InProgressGame(game)
         else:
             emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
                  room=room_manager.get_room_name(game_id))

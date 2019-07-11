@@ -13,64 +13,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.js" integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU=" crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='fabric-3.0.js') }}"></script>
+    <script src="{{ url_for('static', filename='durak-table-api.js') }}"></script>
 </head>
 {% endblock %}
 
 {% block body %}
 <body>
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_2.svg') }}" id="card-c2" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_3.svg') }}" id="card-c3" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_4.svg') }}" id="card-c4" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_5.svg') }}" id="card-c5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_6.svg') }}" id="card-c6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_7.svg') }}" id="card-c7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_8.svg') }}" id="card-c8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_9.svg') }}" id="card-c9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_10.svg') }}" id="card-c10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_j.svg') }}" id="card-cj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_q.svg') }}" id="card-cq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_k.svg') }}" id="card-ck" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_a.svg') }}" id="card-ca" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_2.svg') }}" id="card-d2" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_3.svg') }}" id="card-d3" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_4.svg') }}" id="card-d4" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_5.svg') }}" id="card-d5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_6.svg') }}" id="card-d6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_7.svg') }}" id="card-d7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_8.svg') }}" id="card-d8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_9.svg') }}" id="card-d9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_10.svg') }}" id="card-d10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_j.svg') }}" id="card-dj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_q.svg') }}" id="card-dq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_k.svg') }}" id="card-dk" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_a.svg') }}" id="card-da" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_2.svg') }}" id="card-s2" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_3.svg') }}" id="card-s3" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_4.svg') }}" id="card-s4" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_5.svg') }}" id="card-s5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_6.svg') }}" id="card-s6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_7.svg') }}" id="card-s7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_8.svg') }}" id="card-s8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_9.svg') }}" id="card-s9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_10.svg') }}" id="card-s10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_j.svg') }}" id="card-sj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_q.svg') }}" id="card-sq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_k.svg') }}" id="card-sk" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_a.svg') }}" id="card-sa" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_2.svg') }}" id="card-h2" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_3.svg') }}" id="card-h3" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_4.svg') }}" id="card-h4" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_5.svg') }}" id="card-h5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_6.svg') }}" id="card-h6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_7.svg') }}" id="card-h7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_8.svg') }}" id="card-h8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_9.svg') }}" id="card-h9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_10.svg') }}" id="card-h10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_j.svg') }}" id="card-hj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_q.svg') }}" id="card-hq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_k.svg') }}" id="card-hk" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_a.svg') }}" id="card-ha" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/back.svg') }}" id="card-back" style="display: none;">
+
     {% block above_navbar_content %}
     {% endblock %}
     {% block navbar %}
@@ -129,8 +78,6 @@
                 </canvas>
             </row>
         </div>
-
-
         <script type="text/javascript" src="{{ url_for('static', filename = 'console-websocket-game.js') }}"></script>
         {% endblock %}
     </div>

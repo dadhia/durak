@@ -111,9 +111,16 @@ $(document).ready(function() {
         $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
     });
 
-    socket.on('startGame', function(game_id) {
+    socket.on('initGame', function(game_id, numPlayers, emailIDList) {
         console.log("Starting game with id = " + game_id);
         gameView();
+        prepareCanvas(numPlayers, emailIDList);
+    });
+
+    socket.on('displayHand', function(hand) {
+       for (let i = 0; i < hand.length; i++) {
+           drawCardInHand(hand[i], i);
+       }
     });
 
     $('#newGameButton').on('click', function() {

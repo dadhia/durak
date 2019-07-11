@@ -58,10 +58,30 @@ def remove_user_from_game(user_id, game_id):
 def get_game_user_has_joined(user_id):
     game = Game.query.join(GamePlayed)\
         .filter(GamePlayed.game_id == Game.id)\
-        .filter(Game.cancelled == False)\
-        .filter(Game.started == False)\
+        .filter(not Game.cancelled)\
+        .filter(not Game.started)\
         .first()
     print(game)
     if game is not None:
         return game.id
     return None
+
+
+def set_game_started_true(game_id):
+    game = Game.query.filter_by(id=game_id).first()
+    game.started = True
+    db.session.commit()
+
+
+"""
+Retrieves user_id, email, and join_position for each player in game with game_id.
+"""
+def get_players_in_game(game_id):
+    return db.session.query(User.id, User.email, GamePlayed.join_position)\
+        .filter(GamePlayed.game_id == game_id)\
+        .filter(User.id == GamePlayed.user_id)\
+        .all()
+
+
+if __name__ == '__main__':
+    players = get_players_in_game(38)
