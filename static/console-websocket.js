@@ -123,6 +123,34 @@ $(document).ready(function() {
        }
     });
 
+    socket.on('displayCardsRemaining', function(numCards) {
+        updateCardsRemaining(numCards);
+        if (numCards == 0) {
+            eraseDeck();
+            eraseTrumpCard();
+        } else if (numCards == 1) {
+            eraseDeck();
+        } else {
+            drawDeck();
+        }
+    });
+
+    socket.on('displayTrumpCard', function(card) {
+        drawTrumpCard(card);
+    });
+
+    socket.on('displayCardsDiscarded', function(numCards) {
+        if (numCards > 0) {
+            drawDiscard();
+        } else {
+            eraseDiscard();
+        }
+    });
+
+    socket.on('displayTrumpSuit', function(suit) {
+        drawTrumpSuitText(suit);
+    });
+
     $('#newGameButton').on('click', function() {
         var numPlayers = $('#numPlayers input:radio:checked').val();
         socket.emit('newGame', numPlayers);

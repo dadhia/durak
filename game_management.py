@@ -3,7 +3,7 @@ import db_operations
 from flask_socketio import emit
 import events
 import random
-from constants import NUM_PLAYERS_TO_LOWEST_CARD
+from constants import NUM_PLAYERS_TO_LOWEST_CARD, CARD_VALUE_STRINGS_TO_INT, SUIT_TO_FULL_NAME
 
 
 class InProgressGame:
@@ -42,7 +42,11 @@ class InProgressGame:
             new_hand = []
             self.deck.draw_cards(6, new_hand)
             self.hands.append(new_hand)
-        self.__send_updated_hands()
+        self.trump_card = self.deck.draw_card()
+        self.trump_suit = self.trump_card[0]
+        self.__sort_and_display_updated_hands()
+        self.__display_trump_card()
+        self.__display_trump_suit()
 
     def __set_defense_index(self):
         self.defense_index = (self.attack_index + 1) % self.game.num_players
@@ -51,12 +55,34 @@ class InProgressGame:
         self.attack_index = (self.attack_index + 1) % self.game.num_players
         self.defense_index = (self.defense_index + 1) % self.game.num_players
 
-    def __send_updated_hands(self):
-        print("sending updated hands")
+    def __sort_and_display_updated_hands(self):
         for i in range(self.game.num_players):
+            print(self.hands[i])
+            list.sort(self.hands[i], key=self.__hand_sorter)
             print(self.hands[i])
             emit(events.DISPLAY_HAND, self.hands[i], room=self.session_ids[i])
 
+    def __display_trump_card(self):
+        emit(events.DISPLAY_TRUMP_CARD, self.trump_card, room=room_manager.get_room_name(self.game.id))
+
+    def __display_cards_remaining(self):
+        emit(events.DISPLAY_CARDS_REMAINING, self.deck.get_cards_remaining(),
+             room=room_manager.get_room_name(self.game.id))
+
+    def __display_cards_discarded(self):
+        emit(events.DISPLAY_CARDS_DISCARDED, self.deck.get_cards_discarded(),
+             room=room_manager.get_room_name(self.game.id))
+
+    def __display_trump_suit(self):
+        emit(events.DISPLAY_TRUMP_SUIT, self.trump_suit, room=room_manager.get_room_name(self.game.id))
+
+    def __hand_sorter(self, card):
+        card_suit = card[0]
+        card_value = card[1:]
+        sort_value = card_value_to_int(card_value)
+        if card_suit == self.trump_suit:
+            sort_value += 14
+        return sort_value
 
 
 """
@@ -80,7 +106,7 @@ class DurakDeck:
     def get_cards_remaining(self):
         return len(self.deck)
 
-    def __draw_card(self):
+    def draw_card(self):
         if len(self.deck) > 0:
             return self.deck.pop()
         else:
@@ -93,6 +119,18 @@ class DurakDeck:
     def draw_cards(self, n, hand):
         print("drawing cards...")
         for i in range(n):
-            card = self.__draw_card()
+            card = self.draw_card()
             if card is not None:
                 hand.append(card)
+
+    def draw_trump_card(self):
+        trump_card = self.deck.pop()
+        self.deck.insert(0, trump_card)
+        return trump_card
+
+    def get_cards_discarded(self):
+        return self.cards_discarded
+
+
+def card_value_to_int(card_value_string):
+    return CARD_VALUE_STRINGS_TO_INT[card_value_string]

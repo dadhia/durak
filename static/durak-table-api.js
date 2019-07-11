@@ -3,9 +3,9 @@ var cardsRemainingText;
 var cardsDiscardedText;
 var attackingStatusText, defendingStatusText, addingStatusText;
 var cards = {};
-const deckLocation = generateLocation(170, 330);
-const trumpLocation = generateLocation(220, 330);
-const discardLocation= generateLocation(440, 330);
+const deckLocation = generateLocation(520, 330);
+const trumpLocation = generateLocation(570, 330);
+const discardLocation= generateLocation(790, 330);
 
 const chairLocations = [generateLocation(430, 95), generateLocation(675, 15), generateLocation(890, 95),
     generateLocation(890, 410), generateLocation(675, 505), generateLocation(430, 410)];
@@ -37,6 +37,7 @@ var defenseSquares = new Array(6);
 function generateBackgroundGraphics() {
     var background = generateRect(generateLocation(0, 0), '#004C00', 1400, 600, String('background'));
     var handBackground = generateRect(generateLocation(0, 600), '#BE9B7B', 1400, 200, String('background'));
+    var messageBackground = generateRect(generateLocation(0, 500), 'black', 200, 200, String('background'));
     var table = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
     for (let i = 0; i < 6; i++) {
         attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, 'attack' + i);
@@ -46,6 +47,7 @@ function generateBackgroundGraphics() {
     var defenseText = generateTextObject('Defense', generateLocation(680, 300), 20, '#A40B0B');
     var yourHandText = generateTextObject('Your Hand:', generateLocation(0, 600), 20, '#A40B0B');
     canvas.add(background, table);
+    canvas.add(messageBackground);
     canvas.add(handBackground);
     for (let i = 0; i < 6; i ++) {
         canvas.add(attackSquares[i], defenseSquares[i]);
@@ -93,6 +95,11 @@ function eraseDefending() {
 
 function eraseAdding() {
     canvas.remove(addingStatusText);
+}
+
+function drawTrumpSuitText(suit) {
+    const text = generateTextObject('Trump Suit: ' + suit, generateLocation(510, 415), 12, '#A40B0B');
+    canvas.add(text);
 }
 
 function generateChairs(numPlayers) {
