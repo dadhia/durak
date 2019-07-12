@@ -5,29 +5,39 @@ from models.game_played import GamePlayed
 import logging
 
 
-def cancel_game(game_id):
-    game_to_cancel = Game.query.filter_by(id=game_id).first()
-    game_to_cancel.cancelled = True
-    db.session.commit()
-
-
 def get_user(user_id):
+    """ Returns all user fields of the requested user_id. """
     return User.query.filter(User.id == int(user_id)).first()
 
 
 def get_game(game_id):
+    """ Returns all game fields of the requested game_id. """
     return Game.query.filter_by(id=game_id).first()
 
-
 def insert_new_game(user_id, num_players):
-    game = Game(game_creator=user_id, num_players=num_players, started=False, cancelled=False,
-                players_joined=0)
+    """ Adds a new game into the database. """
+    game = Game(game_creator=user_id, num_players=num_players, started=False, cancelled=False, players_joined=0)
     db.session.add(game)
     db.session.commit()
     return game
 
 
+def cancel_game(game_id):
+    """ Sets value in database for cancelled field to True. """
+    game_to_cancel = Game.query.filter_by(id=game_id).first()
+    game_to_cancel.cancelled = True
+    db.session.commit()
+
+
+def set_game_started_true(game_id):
+    """ Sets the started value for a game with game_id to True. """
+    game = Game.query.filter_by(id=game_id).first()
+    game.started = True
+    db.session.commit()
+
+
 def add_user_to_game(user_id, game_id):
+    """ Adds a user to game association into the database (placed in the games_played table). """
     game = Game.query.filter_by(id=game_id).first()
     if game.num_players == game.players_joined:
         logging.error('Attempted add user to full game')
@@ -41,13 +51,9 @@ def add_user_to_game(user_id, game_id):
         return True
 
 
-"""
-Delete association between user and game.
-"""
 def remove_user_from_game(user_id, game_id):
-    print("attempting to remove user_id = " + str(user_id) + " and game_id = " + str(game_id))
+    """ Deletes a user to game association from the games_played table. """
     game_played = GamePlayed.query.filter_by(user_id=user_id, game_id=game_id).first()
-    print(game_played)
     game = Game.query.filter_by(id=game_id).first()
     game.players_joined -= 1
     db.session.delete(game_played)
@@ -56,6 +62,8 @@ def remove_user_from_game(user_id, game_id):
 
 
 def get_game_user_has_joined(user_id):
+    """ Gets all games a user has joined that have not yet been cancelled or started. """
+    # TODO this function is not working and needs to be fixed.
     game = Game.query.join(GamePlayed)\
         .filter(GamePlayed.game_id == Game.id)\
         .filter(not Game.cancelled)\
@@ -67,12 +75,6 @@ def get_game_user_has_joined(user_id):
     return None
 
 
-def set_game_started_true(game_id):
-    game = Game.query.filter_by(id=game_id).first()
-    game.started = True
-    db.session.commit()
-
-
 def get_players_in_game(game_id):
     """ Retrieves user_id, email, and join_position for each player in game with game_id. """
     return db.session.query(User.id, User.email, GamePlayed.join_position)\
@@ -82,4 +84,5 @@ def get_players_in_game(game_id):
 
 
 if __name__ == '__main__':
+    """ Simply used for debugging purposes.  Will be deleted for final release. """
     players = get_players_in_game(38)
