@@ -33,7 +33,7 @@ function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
     var buttonID = 'joinGame' + gameID;
     var nextRow = "<tr id='" + gameID + "'>" + "<td>" + email + "</td>" + "<td>" + numPlayers + "</td>" +
             "<td>" + spotsRemaining + "</td>" + "<td>" +
-            '<button type="button" class="btn-primary" id="' +  buttonID + '">Join</button></td>';
+            '<button type="button" class="btn btn-primary" id="' +  buttonID + '">Join</button></td>';
     $('#openGamesTable').append(nextRow);
     $('#' + buttonID).on('click', function() {
         socket.emit('joinLobbyGame', gameID);

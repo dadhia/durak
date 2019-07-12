@@ -8,6 +8,7 @@ class RegistrationForm(FlaskForm):
     Password = PasswordField('Password',
                              validators=[DataRequired(), Length(min=8, max=15)],
                              description='Minimum 8 characters.')
+    ScreenName = StringField('Screen Name', validators=[DataRequired(), Length(max=10)])
     submit = SubmitField('Create my Durak Profile')
 
 

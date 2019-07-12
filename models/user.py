@@ -4,6 +4,7 @@ from app import db
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key = True)
+    screen_name = db.Column(db.String(10), nullable=False)
     email = db.Column(db.String(60), nullable=False, unique=True)
     password = db.Column(db.String(178), nullable=False)
 

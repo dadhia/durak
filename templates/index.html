@@ -10,7 +10,7 @@
         {% endblock %}
         <div class="row">
             <div class="col-sm-12">
-                <h3>Create a profile to start playing.</h3>
+                <h3 style="color: #ffffff;">Create a profile to start playing.</h3>
                 {% block reqistration_errors %}
                 {% endblock %}
                 {{ wtf.quick_form(registration_form, action='/register/', form_type='basic', method='post')}}

@@ -25,7 +25,7 @@ SECRET_KEY = os.urandom(32)
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # initialize databases
-app.config['SQLALCHEMY_DATABASE_URI'] = 'PUT YOUR DATABASE URI HERE'
+app.config['SQLALCHEMY_DATABASE_URI'] = ''
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -64,7 +64,7 @@ def register():
     if form.validate_on_submit():
         password_hash = pbkdf2_sha256.hash(form.Password.data)
         try:
-            new_user = User(email=form.Email.data, password=password_hash)
+            new_user = User(email=form.Email.data, password=password_hash, screen_name=form.ScreenName.data)
             db.session.add(new_user)
             db.session.commit()
             login_user(new_user)
@@ -97,7 +97,7 @@ def login():
 @app.route('/console/', methods=['GET'])
 @login_required
 def console():
-    return render_template('console.html', email=current_user.email)
+    return render_template('console.html', screen_name=current_user.screen_name)
 
 
 @app.route('/console/logout/', methods=['GET'])
@@ -137,7 +137,7 @@ def new_game(num_players):
 
     emit(events.WAITING_FOR_PLAYERS, (num_players, 1, game.id, True))
     open_spots = int(num_players) - 1
-    emit(events.ADD_LOBBY_GAME, (current_user.email, num_players, open_spots, game.id),
+    emit(events.ADD_LOBBY_GAME, (current_user.screen_name, num_players, open_spots, game.id),
          room=room_manager.get_lobby_name())
 
 
@@ -223,7 +223,7 @@ def request_all_lobby_games():
     for game in lobby_games.values():
         game_creator = User.query.filter_by(id=game.game_creator).first()
         open_spots = game.num_players - game.players_joined
-        lobby_games_list.append((game_creator.email, game.num_players, open_spots, game.id))
+        lobby_games_list.append((game_creator.screen_name, game.num_players, open_spots, game.id))
     emit(events.POPULATE_LOBBY_GAMES, lobby_games_list)
 
 

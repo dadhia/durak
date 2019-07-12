@@ -1,107 +1,87 @@
-<!DOCTYPE html>
-<html lang="en">
-{% import "bootstrap/wtf.html" as wtf %}
-{% block head %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-    {% block additional_stylesheets %}
-    {% endblock %}
-    <title>Durak</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/jquery-3.4.1.js" integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU=" crossorigin="anonymous"></script>
-    <script src="{{ url_for('static', filename='fabric-3.0.js') }}"></script>
-    <script src="{{ url_for('static', filename='durak-table-api.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename = 'console-websocket.js') }}"></script>
-</head>
+{% extends "layout.html" %}
+{% block additional_javascript_sources %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='fabric-3.0.js') }}"></script>
+<script src="{{ url_for('static', filename='durak-table-api.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename = 'console-websocket.js') }}"></script>
 {% endblock %}
 
-{% block body %}
-<body>
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_5.svg') }}" id="card-c5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_6.svg') }}" id="card-c6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_7.svg') }}" id="card-c7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_8.svg') }}" id="card-c8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_9.svg') }}" id="card-c9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_10.svg') }}" id="card-c10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_j.svg') }}" id="card-cj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_q.svg') }}" id="card-cq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_k.svg') }}" id="card-ck" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_c_a.svg') }}" id="card-ca" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_5.svg') }}" id="card-d5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_6.svg') }}" id="card-d6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_7.svg') }}" id="card-d7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_8.svg') }}" id="card-d8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_9.svg') }}" id="card-d9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_10.svg') }}" id="card-d10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_j.svg') }}" id="card-dj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_q.svg') }}" id="card-dq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_k.svg') }}" id="card-dk" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_d_a.svg') }}" id="card-da" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_5.svg') }}" id="card-s5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_6.svg') }}" id="card-s6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_7.svg') }}" id="card-s7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_8.svg') }}" id="card-s8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_9.svg') }}" id="card-s9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_10.svg') }}" id="card-s10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_j.svg') }}" id="card-sj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_q.svg') }}" id="card-sq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_k.svg') }}" id="card-sk" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_s_a.svg') }}" id="card-sa" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_5.svg') }}" id="card-h5" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_6.svg') }}" id="card-h6" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_7.svg') }}" id="card-h7" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_8.svg') }}" id="card-h8" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_9.svg') }}" id="card-h9" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_10.svg') }}" id="card-h10" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_j.svg') }}" id="card-hj" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_q.svg') }}" id="card-hq" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_k.svg') }}" id="card-hk" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/simple_h_a.svg') }}" id="card-ha" style="display: none;">
-    <img src="{{ url_for('static', filename='playing_cards/back.svg') }}" id="card-back" style="display: none;">
-    {% block above_navbar_content %}
+{% block above_navbar_content %}
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_5.svg') }}" id="card-c5">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_6.svg') }}" id="card-c6">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_7.svg') }}" id="card-c7">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_8.svg') }}" id="card-c8">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_9.svg') }}" id="card-c9">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_10.svg') }}" id="card-c10">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_j.svg') }}" id="card-cj">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_q.svg') }}" id="card-cq">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_k.svg') }}" id="card-ck">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_c_a.svg') }}" id="card-ca">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_5.svg') }}" id="card-d5">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_6.svg') }}" id="card-d6">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_7.svg') }}" id="card-d7">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_8.svg') }}" id="card-d8">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_9.svg') }}" id="card-d9">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_10.svg') }}" id="card-d10">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_j.svg') }}" id="card-dj">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_q.svg') }}" id="card-dq">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_k.svg') }}" id="card-dk">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_d_a.svg') }}" id="card-da">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_5.svg') }}" id="card-s5">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_6.svg') }}" id="card-s6">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_7.svg') }}" id="card-s7">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_8.svg') }}" id="card-s8">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_9.svg') }}" id="card-s9">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_10.svg') }}" id="card-s10">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_j.svg') }}" id="card-sj">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_q.svg') }}" id="card-sq">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_k.svg') }}" id="card-sk">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_s_a.svg') }}" id="card-sa">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_5.svg') }}" id="card-h5">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_6.svg') }}" id="card-h6">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_7.svg') }}" id="card-h7">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_8.svg') }}" id="card-h8">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_9.svg') }}" id="card-h9">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_10.svg') }}" id="card-h10">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_j.svg') }}" id="card-hj">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_q.svg') }}" id="card-hq">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_k.svg') }}" id="card-hk">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/simple_h_a.svg') }}" id="card-ha">
+<img class="card-image" src="{{ url_for('static', filename='playing_cards/back.svg') }}" id="card-back">
+{% endblock %}
+
+{% block additional_navbar_content %}
+<ul class="navbar-nav mr-auto">
+    {% block console_navbar_links %}
     {% endblock %}
-    {% block navbar %}
-    <nav class="navbar navbar-expand-lg navbar-light" style="background-color: #8DEBF0;">
-        <a class="navbar-brand" href="#">Durak</a>
-        {% block additional_navbar_content %}
-            <ul class="navbar-nav mr-auto">
-                {% block console_navbar_links %}
-                {% endblock %}
-            </ul>
-            <a class="navbar-brand"> {{ email }} </a>
-            <form method="get" action="/console/logout/">
-                <button class="btn-default" type="submit" id="logoutButton">Logout</button>
-            </form>
-        {% endblock %}
-    </nav>
-    {% endblock %}
-    {% block main_page_content %}
-    <div class="container-fluid">
-        {% block page_specific_content %}
-        <row id="createGameBlock">
-            <h5>Select number of players for a new game:</h5>
-            <div class="btn-group" id="numPlayers">
+</ul>
+<a class="navbar-brand" style="color: #ffffff"> {{ screen_name }} </a>
+<form method="get" action="/agency/logout/">
+    <button class="btn btn-default" type="submit">Logout</button>
+</form>
+{% endblock %}
+
+{% block page_specific_content %}
+    <row id="createGameBlock">
+        <h5 style="color: #ffffff;">Select number of players for a new game:</h5>
+        <div class="btn-group" id="numPlayers">
             <label class="radio-inline"><input type="radio" name="optradio" value="2" checked>   2   </label>
             <label class="radio-inline"><input type="radio" name="optradio" value="3">   3   </label>
             <label class="radio-inline"><input type="radio" name="optradio" value="4">   4   </label>
             <label class="radio-inline"><input type="radio" name="optradio" value="5">   5   </label>
             <label class="radio-inline"><input type="radio" name="optradio" value="6">   6   </label>
-            </div>
-            <button type="button" class="btn-primary" id="newGameButton">New Game</button>
-        </row>
-
-        <row id="messageBlock" style="display: none;">
-            <p id="loadingText"></p>
-            <button type="button" class="btn-warning" id="leaveGameButton">Leave Game</button>
-            <button type="button" class="btn-danger" id="cancelGameButton">Cancel Game</button>
-            <p id="logoutWarning"></p>
-        </row>
-
-        <row id="lobby">
-            <h5>Or Join a Game in the Lobby:</h5>
-            <table class="table" id="openGamesTable">
+        </div>
+            <button type="button" class="btn btn-default" id="newGameButton">New Game</button>
+    </row>
+    <row id="messageBlock" style="display: none;" class="messageBlockText">
+        <p id="loadingText"></p>
+        <button type="button" class="btn btn-warning" id="leaveGameButton">Leave Game</button>
+        <button type="button" class="btn btn-danger" id="cancelGameButton">Cancel Game</button>
+        <p id="logoutWarning"></p>
+    </row>
+    <row id="lobby">
+        <h5 style="color: #ffffff;">Or Join a Game in the Lobby:</h5>
+        <table class="table lobby-games" id="openGamesTable">
             <thead>
                 <tr>
                     <th>Game Creator</th>
@@ -111,18 +91,8 @@
                 </tr>
             </thead>
         </table>
-        </row>
-        <row id="game" style="display: none;">
-            <canvas id="durak-table" width="1400" height="750" class="durak-table-style"></canvas>
-        </row>
-        {% endblock %}
-    </div>
-    {% endblock %}
-
-    {% block boostrap_javascript_sources %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-    {% endblock %}
-</body>
+    </row>
+    <row id="game" style="display: none;">
+        <canvas id="durak-table" width="1400" height="750" class="durak-table-style"></canvas>
+    </row>
 {% endblock %}
-</html>
