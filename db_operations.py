@@ -73,7 +73,7 @@ def get_game_user_has_joined(user_id):
 
 def get_players_in_game(game_id):
     """ Retrieves user_id, email, and join_position for each player in game with game_id. """
-    return db.session.query(User.id, User.email, GamePlayed.join_position)\
+    return db.session.query(User.id, User.screen_name, GamePlayed.join_position)\
         .filter(GamePlayed.game_id == game_id)\
         .filter(User.id == GamePlayed.user_id)\
         .all()

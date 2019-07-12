@@ -12,13 +12,11 @@ class InProgressGame:
     def __init__(self, game):
         self.game = game
         self.player_info = db_operations.get_players_in_game(game.id)
+        self.room_name = room_manager.get_room_name(game.id)
         # TODO add seat position into database for statistical purposes - may also be useful for AI training
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
-        print(self.session_ids)
-        print("initializing game...")
         self.__initialize_game()
-        print("starting game...")
         self.__start_game()
 
     def __acquire_session_ids(self):
@@ -27,13 +25,10 @@ class InProgressGame:
             self.session_ids.append(session_manager.get_session_id(player.id))
 
     def __initialize_game(self):
-        email_ids = []
+        screen_names = []
         for player in self.player_info:
-            email_ids.append(player.email)
-        print(email_ids)
-        emit(events.INIT_GAME,
-             (self.game.id, self.game.num_players, email_ids),
-             room=room_manager.get_room_name(self.game.id))
+            screen_names.append(player.screen_name)
+        emit(events.INIT_GAME, (self.game.id, self.game.num_players, screen_names), room=self.room_name)
 
     def __start_game(self):
         self.attack_index = random.randint(0, self.game.num_players-1)
@@ -67,19 +62,17 @@ class InProgressGame:
             emit(events.DISPLAY_HAND, self.hands[i], room=self.session_ids[i])
 
     def __display_trump_card(self):
-        emit(events.DISPLAY_TRUMP_CARD, self.trump_card, room=room_manager.get_room_name(self.game.id))
+        emit(events.DISPLAY_TRUMP_CARD, self.trump_card, room=self.room_name)
 
     def __display_cards_remaining(self):
-        emit(events.DISPLAY_CARDS_REMAINING, self.deck.get_cards_remaining(),
-             room=room_manager.get_room_name(self.game.id))
+        emit(events.DISPLAY_CARDS_REMAINING, self.deck.get_cards_remaining(), room=self.room_name)
 
     def __display_cards_discarded(self):
-        emit(events.DISPLAY_CARDS_DISCARDED, self.deck.get_cards_discarded(),
-             room=room_manager.get_room_name(self.game.id))
+        emit(events.DISPLAY_CARDS_DISCARDED, self.deck.get_cards_discarded(), room=self.room_name)
 
     def __display_trump_suit(self):
         suit = SUIT_TO_FULL_NAME[self.trump_suit]
-        emit(events.DISPLAY_TRUMP_SUIT, suit, room=room_manager.get_room_name(self.game.id))
+        emit(events.DISPLAY_TRUMP_SUIT, suit, room=self.room_name)
 
     def __hand_sorter(self, card):
         card_suit = card[0]
@@ -90,29 +83,45 @@ class InProgressGame:
         return sort_value
 
     def __send_on_attack_message(self):
-        on_defense_user_email = self.player_info[self.defense_index].email
         on_attack_user_id = self.player_info[self.attack_index].id
-        on_attack_user_email = self.player_info[self.attack_index].email
-        emit(events.USER_ON_ATTACK, on_defense_user_email, room=session_manager.get_session_id(on_attack_user_id))
-        emit(events.OTHER_USER_ATTACKING, )
+        emit(events.UPDATE_USER_STATUS_MESSAGE, self.__construct_on_attack_message(),
+             room=session_manager.get_session_id(on_attack_user_id))
+
+        general_status_message = self.__construct_on_attack_status_message()
+        other_session_ids = self.__get_session_ids(on_attack_user_id)
+        for session_id in other_session_ids:
+            print("sent other user message")
+            emit(events.UPDATE_USER_STATUS_MESSAGE, general_status_message, room=session_id)
 
     def __send_on_defense_message(self):
-        on_attack_user_email = self.player_info[self.attack_index].email
+        on_attack_screen_name = self.player_info[self.attack_index].screen_name
         on_defense_user_id = self.player_info[self.defense_index].id
-        emit(events.USER_ON_DEFENSE, on_attack_user_email, room=session_manager.get_session_id(on_defense_user_id))
+        on_defense_screen_name = self.player_info[self.defense_index].screen_name
+        emit(events.USER_ON_DEFENSE, on_attack_screen_name, room=self.room_name)
 
     def __get_session_ids(self, exclude_user_id):
         session_ids = []
         for player in self.player_info:
             if player.id != exclude_user_id:
-                session_ids.append(session_manager.get_session_id[player.id])
+                session_ids.append(session_manager.get_session_id(player.id))
         return session_ids
+
+    def __construct_on_attack_message(self):
+        on_defense_screen_name = self.__get_screen_name(self.defense_index)
+        return 'YOUR TURN: Attacking ' + on_defense_screen_name
+
+    def __construct_on_attack_status_message(self):
+        on_attack_screen_name = self.__get_screen_name(self.attack_index)
+        on_defense_screen_name = self.__get_screen_name(self.defense_index)
+        return on_attack_screen_name + ' is attacking ' + on_defense_screen_name
+
+    def __get_screen_name(self, player_index):
+        return self.player_info[player_index].screen_name
 
 
 class DurakDeck:
     """ This class manages the durak deck from construction, to drawing cards, to discarding cards. """
     def __init__(self, lowest_card):
-        print("making deck...")
         self.__make_deck(lowest_card)
         self.cards_discarded = 0
 
@@ -139,7 +148,6 @@ class DurakDeck:
         self.cards_discarded += 1
 
     def draw_cards(self, n, hand):
-        print("drawing cards...")
         for i in range(n):
             card = self.draw_card()
             if card is not None:

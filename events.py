@@ -21,5 +21,5 @@ DISPLAY_TRUMP_CARD = "displayTrumpCard"
 DISPLAY_CARDS_REMAINING = "displayCardsRemaining"
 DISPLAY_CARDS_DISCARDED = "displayCardsDiscarded"
 DISPLAY_TRUMP_SUIT = "displayTrumpSuit"
-USER_ON_ATTACK = "onAttack"
-OTHER_USER_ATTACKING = "otherUserAttacking"
+UPDATE_USER_STATUS_MESSAGE = "updateUserStatusMessage"
+
