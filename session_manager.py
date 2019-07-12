@@ -1,6 +1,3 @@
-"""
-Keeps track of session ids whenever a user connects or disconnects.
-"""
 session_ids = {}
 
 

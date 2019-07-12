@@ -1,6 +1,3 @@
-"""
-Allows the server to keep track of which connections belong to which rooms.
-"""
 from constants import GAME_ROOM_PREFIX, LOBBY_ROOM_NAME
 from flask_socketio import leave_room, join_room
 

@@ -1,4 +1,5 @@
-import session_manager, room_manager
+import session_manager
+import room_manager
 import db_operations
 from flask_socketio import emit
 import events
@@ -7,6 +8,7 @@ from constants import NUM_PLAYERS_TO_LOWEST_CARD, CARD_VALUE_STRINGS_TO_INT, SUI
 
 
 class InProgressGame:
+    """ Manages a game from initialization to completion and sends messages to all users. """
     def __init__(self, game):
         self.game = game
         self.player_info = db_operations.get_players_in_game(game.id)
@@ -107,11 +109,8 @@ class InProgressGame:
         return session_ids
 
 
-
-"""
-This class manages the durak deck from construction, to drawing cards, to discarding cards.
-"""
 class DurakDeck:
+    """ This class manages the durak deck from construction, to drawing cards, to discarding cards. """
     def __init__(self, lowest_card):
         print("making deck...")
         self.__make_deck(lowest_card)

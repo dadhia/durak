@@ -1,15 +1,14 @@
-from flask import Flask, request
-from flask import redirect, url_for, render_template
+from flask import Flask, request, redirect, url_for, render_template
 from flask_bootstrap import Bootstrap
-from flask_login import LoginManager
-from flask_login import current_user, login_user, login_required, logout_user
+from flask_login import LoginManager, current_user, login_user, login_required, logout_user
 from flask_socketio import SocketIO, emit
 from forms.user_forms import LoginForm, RegistrationForm
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
 from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, LOBBY_ROOM_NAME
-import room_manager, session_manager
+import room_manager
+import session_manager
 import events
 import os
 
@@ -108,26 +107,26 @@ def logout():
     return redirect(url_for('index'))
 
 
-"""
-Called when a user logs into their console and connects with a websocket.
-We will send them all available games for them to join.
-"""
 @socketio.on(events.CONNECT)
 @login_required
 def connect():
+    """
+    Called when a user logs into their console and connects with a websocket.
+    We will send them all available games for them to join.
+    """
     session_manager.add_session_id(current_user.id, request.sid)
     room_manager.join_lobby()
     # TODO - are they already in a game?
 
 
-"""
-Creates a new game.  The game is entered into a database table of games with started = False and cancelled = False.
-Also creates an entry into the games_played table, logging that this user has joined the game.
-Finally, emits this data to the correct rooms.
-"""
 @socketio.on(events.NEW_GAME)
 @login_required
 def new_game(num_players):
+    """
+    Creates a new game.  The game is entered into a database table of games with started = False and cancelled = False.
+    Also creates an entry into the games_played table, logging that this user has joined the game.
+    Finally, emits this data to the correct rooms.
+    """
     game = db_operations.insert_new_game(current_user.id, int(num_players))
     db_operations.add_user_to_game(current_user.id, game.id)
     lobby_games[game.id] = game
@@ -141,13 +140,13 @@ def new_game(num_players):
          room=room_manager.get_lobby_name())
 
 
-"""
-Called when a user disconnects from their console.
-Remove any game that this user has created (should only be one) and broadcast this message to all users.
-"""
 @socketio.on(events.DISCONNECT)
 @login_required
 def disconnect():
+    """
+    Called when a user disconnects from their console.
+    Remove any game that this user has created (should only be one) and broadcast this message to all users.
+    """
     game_id = db_operations.get_game_user_has_joined(current_user.id)
     print(game_id)
     if game_id is not None:
@@ -166,12 +165,12 @@ def disconnect():
     session_manager.remove_session_id(current_user.id)
 
 
-"""
-Cancels a game that a user has created in the game lobby. Moves user from the room for that game into the lobby.
-"""
 @socketio.on(events.CANCEL_LOBBY_GAME)
 @login_required
 def cancel_lobby_game(game_id):
+    """
+    Cancels a game that a user has created in the game lobby. Moves user from the room for that game into the lobby.
+    """
     game = lobby_games[game_id]
     game.cancelled = True
     db_operations.cancel_game(game.id)
@@ -234,19 +233,15 @@ def rejoin_lobby():
     room_manager.rejoin_lobby(current_user.id)
 
 
-"""
-User loader for flask login manager.
-"""
 @login_manager.user_loader
 def user_loader(user_id):
+    """ User loader for flask login manager. """
     return db_operations.get_user(user_id)
 
 
-"""
-Redirects users to the main login screen if they attempt to access something without logging in.
-"""
 @login_manager.unauthorized_handler
 def unauthorized():
+    """ Redirects users to the main login screen if they attempt to access something without logging in. """
     return redirect(url_for('index'))
 
 
