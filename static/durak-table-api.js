@@ -59,13 +59,11 @@ function generateBackgroundGraphics() {
 }
 
 function generateUserStatusText() {
-
-    userStatusText = generateTextObject('YOUR TURN: Attacking devan@adhiafunds.com', userStatusTextLocation, 15, 'white');
+    userStatusText = generateTextObject('', userStatusTextLocation, 15, 'white');
 }
 
 function updateUserStatusText(text) {
-    console.log('updating user status text');
-    userStatusText.text = 'YOUR TURN: ' + text;
+    userStatusText.text = text;
     canvas.add(userStatusText);
 }
 

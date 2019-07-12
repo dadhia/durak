@@ -111,10 +111,10 @@ $(document).ready(function() {
         $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
     });
 
-    socket.on('initGame', function(game_id, numPlayers, emailIDList) {
+    socket.on('initGame', function(game_id, numPlayers, screenNamesList) {
         console.log("Starting game with id = " + game_id);
         gameView();
-        prepareCanvas(numPlayers, emailIDList);
+        prepareCanvas(numPlayers, screenNamesList);
     });
 
     socket.on('displayHand', function(hand) {
@@ -151,9 +151,9 @@ $(document).ready(function() {
         drawTrumpSuitText(suit);
     });
 
-    socket.on('onAttack', function(defenderEmail) {
-        console.log('Got on attack message with defender email = ' + defenderEmail);
-        updateUserStatusText('Attacking ' + defenderEmail);
+    socket.on('updateUserStatusMessage', function(text) {
+        console.log(text);
+        updateUserStatusText(text);
     });
 
     $('#newGameButton').on('click', function() {
