@@ -45,7 +45,6 @@ def add_user_to_game(user_id, game_id):
     else:
         game.players_joined += 1
         game_played = GamePlayed(user_id=user_id, game_id=game_id, join_position=game.players_joined)
-        print(game_played)
         db.session.add(game_played)
         db.session.commit()
         return True
@@ -63,16 +62,13 @@ def remove_user_from_game(user_id, game_id):
 
 def get_game_user_has_joined(user_id):
     """ Gets all games a user has joined that have not yet been cancelled or started. """
-    # TODO this function is not working and needs to be fixed.
-    game = Game.query.join(GamePlayed)\
+    return db.session.query(Game.id)\
+        .join(GamePlayed)\
         .filter(GamePlayed.game_id == Game.id)\
-        .filter(not Game.cancelled)\
-        .filter(not Game.started)\
-        .first()
-    print(game)
-    if game is not None:
-        return game.id
-    return None
+        .filter(GamePlayed.user_id == user_id)\
+        .filter(Game.cancelled == False)\
+        .filter(Game.started == False)\
+        .first().id
 
 
 def get_players_in_game(game_id):
@@ -85,4 +81,4 @@ def get_players_in_game(game_id):
 
 if __name__ == '__main__':
     """ Simply used for debugging purposes.  Will be deleted for final release. """
-    players = get_players_in_game(38)
+    players = get_game_user_has_joined(1)

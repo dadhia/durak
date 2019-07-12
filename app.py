@@ -24,7 +24,7 @@ SECRET_KEY = os.urandom(32)
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # initialize databases
-app.config['SQLALCHEMY_DATABASE_URI'] = ''
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/durak?user=postgres&password=***REMOVED***'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -44,12 +44,13 @@ in_progress_games = {}
 
 @app.route('/game/', methods=['GET'])
 def get_game():
-    return render_template('console-game.html',
-                           email='THIS IS A TEST ENVIRONMENT')
+    """ Renders the console-game.html page for testing purposes.  This method will be removed eventually. """
+    return render_template('console-game.html', email='THIS IS A TEST ENVIRONMENT')
 
 
 @app.route('/', methods=['GET'])
 def index():
+    """ Renders the home page. """
     if current_user.is_authenticated:
         return redirect(url_for('console'))
     return render_template('index.html',
@@ -59,6 +60,7 @@ def index():
 
 @app.route('/register/', methods=['POST'])
 def register():
+    """ Handles a registration request from a client and verifies that all necessary information is provided. """
     form = RegistrationForm()
     if form.validate_on_submit():
         password_hash = pbkdf2_sha256.hash(form.Password.data)
@@ -81,6 +83,7 @@ def register():
 
 @app.route('/login/', methods=['POST'])
 def login():
+    """ Handles a login request from a client. """
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter(User.email == form.email.data).first()
@@ -96,12 +99,14 @@ def login():
 @app.route('/console/', methods=['GET'])
 @login_required
 def console():
+    """ Renders the console template. """
     return render_template('console.html', screen_name=current_user.screen_name)
 
 
 @app.route('/console/logout/', methods=['GET'])
 @login_required
 def logout():
+    """ Handles a logout request from a client. """
     # TODO force a disconnect
     logout_user()
     return redirect(url_for('index'))
@@ -148,8 +153,7 @@ def disconnect():
     Remove any game that this user has created (should only be one) and broadcast this message to all users.
     """
     game_id = db_operations.get_game_user_has_joined(current_user.id)
-    print(game_id)
-    if game_id is not None:
+    if game_id is not None and game_id in lobby_games:
         game = lobby_games[game_id]
         if game.game_creator == current_user.id:
             game.cancelled = True
@@ -183,7 +187,10 @@ def cancel_lobby_game(game_id):
 @socketio.on(events.JOIN_LOBBY_GAME)
 @login_required
 def join_lobby_game(game_id):
-    print("Joining lobby game with game_id = " + str(game_id) + " and user_id = " + str(current_user.id))
+    """
+    Handles a request to join a lobby game.
+    :param game_id: int
+    """
     success = db_operations.add_user_to_game(current_user.id, game_id)
     if success:
         game = db_operations.get_game(game_id)
@@ -207,6 +214,11 @@ def join_lobby_game(game_id):
 @socketio.on(events.LEAVE_LOBBY_GAME)
 @login_required
 def leave_lobby_game(game_id):
+    """
+    Handles request from client to leave a game that it has joined.  Notifies all clients in the lobby that a new spot
+    in that game is available and all clients who have joined that game that they are waiting on an additional player.
+    Requests the client who left to return to lobby with a RETURN_TO_LOBBY event.
+    """
     game = db_operations.remove_user_from_game(current_user.id, game_id)
     lobby_games[game_id] = game
     emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id), room=LOBBY_ROOM_NAME)
@@ -218,6 +230,7 @@ def leave_lobby_game(game_id):
 @socketio.on(events.REQUEST_ALL_LOBBY_GAMES)
 @login_required
 def request_all_lobby_games():
+    """ Handles a request from client for all lobby games.  Sends a POPULATE_LOBBY_GAMES message back to client. """
     lobby_games_list = []
     for game in lobby_games.values():
         game_creator = User.query.filter_by(id=game.game_creator).first()
@@ -229,7 +242,7 @@ def request_all_lobby_games():
 @socketio.on(events.REJOIN_LOBBY)
 @login_required
 def rejoin_lobby():
-    print(str(current_user.id) + " is requesting to rejoin the lobby.")
+    """ Handles request from client to rejoin lobby. """
     room_manager.rejoin_lobby(current_user.id)
 
 
