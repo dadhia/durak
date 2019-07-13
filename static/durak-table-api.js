@@ -305,3 +305,43 @@ function openAttackSquares(squares) {
         attackSquares[squares[i]].set({opacity: 1.0});
     }
 }
+
+function setAttackButtonVisibility(visible) {
+    if (visible) {
+        $('#attackButton').show();
+    } else {
+        $('#attackButton').hide();
+    }
+}
+
+function setDefenseButtonVisibility(visible) {
+    if (visible) {
+        $('#defenseButton').show();
+    } else {
+        $('#defenseButton').hide();
+    }
+}
+
+function setDoneButtonVisibility(visible) {
+    if (visible) {
+        $('#doneButton').show();
+    } else {
+        $('#doneButton').hide();
+    }
+}
+
+function setSlideButtonVisibility(visible) {
+    if (visible) {
+        $('#slideButton').show();
+    } else {
+        $('#slideButton').hide();
+    }
+}
+
+function setPickupButtonVisibility(visible) {
+    if (visible) {
+        $('#pickupButton').show();
+    } else {
+        $('#pickupButton').hide();
+    }
+}

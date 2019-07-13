@@ -7,8 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
 from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, LOBBY_ROOM_NAME
-import room_manager
-import session_manager
+from connections import session_manager, room_manager
 import events
 import os
 
@@ -29,13 +28,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 from models.user import User
-from models.game import Game
-from models.game_played import GamePlayed
+
 db.create_all()
 
-
-import db_operations
-import game_management
+from database import db_operations
+from game import game_management
 
 lobby_games = {}
 started_games = {}
@@ -51,8 +48,6 @@ def get_game():
 @app.route('/', methods=['GET'])
 def index():
     """ Renders the home page. """
-    if current_user.is_authenticated:
-        return redirect(url_for('console'))
     return render_template('index.html',
                            login_form=LoginForm(),
                            registration_form=RegistrationForm())

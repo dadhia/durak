@@ -1,6 +1,5 @@
-import session_manager
-import room_manager
-import db_operations
+from connections import session_manager, room_manager
+from database import db_operations
 from flask_socketio import emit
 import events
 import random

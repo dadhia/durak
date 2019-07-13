@@ -22,4 +22,4 @@ DISPLAY_CARDS_REMAINING = "displayCardsRemaining"
 DISPLAY_CARDS_DISCARDED = "displayCardsDiscarded"
 DISPLAY_TRUMP_SUIT = "displayTrumpSuit"
 UPDATE_USER_STATUS_MESSAGE = "updateUserStatusMessage"
-
+GAME_RESPONSE = "gameResponse"
