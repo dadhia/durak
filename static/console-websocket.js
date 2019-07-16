@@ -156,6 +156,13 @@ $(document).ready(function() {
         updateUserStatusText(text);
     });
 
+    socket.on('drawAttacking', drawAttacking);
+    socket.on('eraseAttacking', eraseAttacking);
+    socket.on('drawDefending', drawDefending);
+    socket.on('eraseDefending', eraseDefending);
+    socket.on('drawAdding', drawAdding);
+    socket.on('eraseAdding', eraseAdding);
+
     $('#newGameButton').on('click', function() {
         var numPlayers = $('#numPlayers input:radio:checked').val();
         socket.emit('newGame', numPlayers);

@@ -5,6 +5,7 @@ var attackingStatusText, defendingStatusText, addingStatusText;
 var userStatusText;
 const userStatusTextLocation = generateLocation(2, 500);
 var cards = {};
+var gameBoardState;
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
@@ -274,6 +275,13 @@ function drawCardInHand(card, position) {
     cardsDrawnInHand.push(cards[card]);
 }
 
+function clearCardsInHand() {
+    for (let i = 0; i < cardsDrawnInHand.length; i++) {
+        let card = cardsDrawnInHand.pop();
+        eraseCard(card.id);
+    }
+}
+
 function makeCardUnselectable(card) {
     cards[card].set({opacity: 0.4});
 }
@@ -344,4 +352,12 @@ function setPickupButtonVisibility(visible) {
     } else {
         $('#pickupButton').hide();
     }
+}
+
+function setGameBoardState(newGameBoardState) {
+    gameBoardState = newGameBoardState;
+}
+
+function getGameBoardState() {
+    return gameBoardState;
 }

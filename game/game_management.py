@@ -4,6 +4,7 @@ from flask_socketio import emit
 import events
 import random
 from constants import NUM_PLAYERS_TO_LOWEST_CARD, CARD_VALUE_STRINGS_TO_INT, SUIT_TO_FULL_NAME
+from game.game_states import GameStates
 
 
 class InProgressGame:
@@ -16,7 +17,7 @@ class InProgressGame:
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
         self.__initialize_game()
-        self.__start_game()
+        self.__transition_state()
 
     def __acquire_session_ids(self):
         self.session_ids = []
@@ -24,14 +25,12 @@ class InProgressGame:
             self.session_ids.append(session_manager.get_session_id(player.id))
 
     def __initialize_game(self):
+        """ Performs game initialization.  Updates UI with screen names and deals cards to players. """
+        self.game_state = GameStates.INIT
         screen_names = []
         for player in self.player_info:
             screen_names.append(player.screen_name)
         emit(events.INIT_GAME, (self.game.id, self.game.num_players, screen_names), room=self.room_name)
-
-    def __start_game(self):
-        self.attack_index = random.randint(0, self.game.num_players-1)
-        self.__set_defense_index()
         self.deck = DurakDeck(NUM_PLAYERS_TO_LOWEST_CARD[self.game.num_players])
         self.hands = []
         for i in range(self.game.num_players):
@@ -40,11 +39,9 @@ class InProgressGame:
             self.hands.append(new_hand)
         self.trump_card = self.deck.draw_card()
         self.trump_suit = self.trump_card[0]
-        self.__sort_and_display_updated_hands()
-        self.__display_trump_card()
         self.__display_trump_suit()
-        self.__send_on_attack_message()
-        self.__display_cards_remaining()
+        # we display the trump card and the UI automatically removes it when cards remaining == 0
+        self.__display_trump_card()
 
     def __set_defense_index(self):
         self.defense_index = (self.attack_index + 1) % self.game.num_players
@@ -82,28 +79,59 @@ class InProgressGame:
         return sort_value
 
     def __send_on_attack_message(self):
-        on_attack_user_id = self.player_info[self.attack_index].id
-        emit(events.UPDATE_USER_STATUS_MESSAGE, self.__construct_on_attack_message(),
-             room=session_manager.get_session_id(on_attack_user_id))
+        session_id = self.session_ids[self.attack_index]
+        emit(events.UPDATE_USER_STATUS_MESSAGE, self.__construct_on_attack_message(), room=session_id)
 
         general_status_message = self.__construct_on_attack_status_message()
-        other_session_ids = self.__get_session_ids(on_attack_user_id)
-        for session_id in other_session_ids:
-            print("sent other user message")
-            emit(events.UPDATE_USER_STATUS_MESSAGE, general_status_message, room=session_id)
+        for i in range(self.game.num_players):
+            if i is self.attack_index:
+                continue
+            emit(events.UPDATE_USER_STATUS_MESSAGE, general_status_message, room=self.session_ids[i])
 
     def __send_on_defense_message(self):
-        on_attack_screen_name = self.player_info[self.attack_index].screen_name
-        on_defense_user_id = self.player_info[self.defense_index].id
-        on_defense_screen_name = self.player_info[self.defense_index].screen_name
-        emit(events.USER_ON_DEFENSE, on_attack_screen_name, room=self.room_name)
+        session_id = self.session_ids[self.defense_index]
+        emit(events.UPDATE_USER_STATUS_MESSAGE, self.__construct_on_defense_message(), room=session_id)
 
-    def __get_session_ids(self, exclude_user_id):
-        session_ids = []
-        for player in self.player_info:
-            if player.id != exclude_user_id:
-                session_ids.append(session_manager.get_session_id(player.id))
-        return session_ids
+        general_status_message = self.__construct_on_defense_status_message()
+        for i in range(self.game.num_players):
+            if i is self.defense_index:
+                continue
+            emit(events.UPDATE_USER_STATUS_MESSAGE, general_status_message, room=self.session_ids[i])
+
+    def __enable_attack_ui(self):
+        max_cards = min(len(self.hands[self.defense_index]), 6)
+        emit(events.ON_ATTACK, max_cards, room=self.session_ids[self.attack_index])
+        for i in range(self.game.num_player):
+            if i is self.attack_index:
+                emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
+
+    def __get_screen_name(self, player_index):
+        return self.player_info[player_index].screen_name
+
+    def __transition_state(self):
+        if self.game_state is GameStates.INIT:
+            self.__init_to_attack_transition()
+        self.__update_game()
+
+    def __init_to_attack_transition(self):
+        """ Takes the game from INIT to the first move which is always an attack. """
+        self.attack_index = random.randint(0, self.game.num_players - 1)
+        self.adding_index = self.attack_index
+        self.__set_defense_index()
+        self.game_state = GameStates.ON_ATTACK
+        self.__draw_attacking_label()
+        self.__draw_defending_label()
+
+    def __update_game(self):
+        if self.game_state is GameStates.ON_ATTACK:
+            self.__display_cards_remaining()
+            self.__display_cards_discarded()
+            self.__sort_and_display_updated_hands()
+            self.__send_on_attack_message()
+            self.__enable_attack_ui()
+        elif self.game_state is GameStates.ON_DEFENSE:
+            self.__sort_and_display_updated_hands()
+            self.__send_on_defense_message()
 
     def __construct_on_attack_message(self):
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
@@ -114,8 +142,36 @@ class InProgressGame:
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
         return on_attack_screen_name + ' is attacking ' + on_defense_screen_name
 
-    def __get_screen_name(self, player_index):
-        return self.player_info[player_index].screen_name
+    def __construct_on_defense_message(self):
+        return 'YOUR TURN: Defending'
+
+    def __construct_on_defense_status_message(self):
+        on_defense_screen_name = self.__get_screen_name(self.defense_index)
+        return on_defense_screen_name + ' is defending.'
+
+    def __construct_on_adding_message(self):
+        on_defense_screen_name = self.__get_screen_name(self.defense_index)
+        return 'YOUR TURN: Adding to attack on ' + on_defense_screen_name
+
+    def __construct_on_adding_status_message(self):
+        on_defense_screen_name = self.__get_screen_name(self.defense_index)
+        on_adding_screen_name = self.__get_screen_name(self.adding_index)
+        return on_adding_screen_name + ' is adding to attack on ' + on_defense_screen_name
+
+    def __draw_attacking_label(self):
+        emit(events.DRAW_ATTACKING, (self.game.num_players, self.attack_index), room=self.room_name)
+
+    def __erase_attacking_label(self):
+        emit(events.ERASE_ATTACKING, room=self.room_name)
+
+    def __draw_defending_label(self):
+        emit(events.DRAW_DEFENDING, (self.game.num_players, self.defense_index), room=self.room_name)
+
+    def __erase_defending_label(self):
+        emit(events.ERASE_DEFENDING, room=self.room_name)
+
+    def __draw_adding_label(self):
+        emit(events.DRAW_ADDING, (self.game.num_players, self.adding_index), room=self.room_name)
 
 
 class DurakDeck:

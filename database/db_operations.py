@@ -14,6 +14,7 @@ def get_game(game_id):
     """ Returns all game fields of the requested game_id. """
     return Game.query.filter_by(id=game_id).first()
 
+
 def insert_new_game(user_id, num_players):
     """ Adds a new game into the database. """
     game = Game(game_creator=user_id, num_players=num_players, started=False, cancelled=False, players_joined=0)
