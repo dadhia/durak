@@ -99,7 +99,7 @@ class InProgressGame:
             emit(events.UPDATE_USER_STATUS_MESSAGE, general_status_message, room=self.session_ids[i])
 
     def __enable_attack_ui(self):
-        max_cards = min(len(self.hands[self.defense_index]), 6)
+        max_cards = min(len(self.hands[self.defense_index]), 4)
         emit(events.ON_ATTACK, max_cards, room=self.session_ids[self.attack_index])
         for i in range(self.game.num_player):
             if i is self.attack_index:

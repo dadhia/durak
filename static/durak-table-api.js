@@ -6,6 +6,8 @@ var userStatusText;
 const userStatusTextLocation = generateLocation(2, 500);
 var cards = {};
 var gameBoardState;
+const DISABLED_STATE = 'DISABLED';
+const ON_ATTACK_STATE = 'ATTACK';
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
@@ -36,15 +38,17 @@ var objectToSquare = {};
 
 var attackSquares = new Array(6);
 var defenseSquares = new Array(6);
+var attackCardNames = ['attack0', 'attack1', 'attack2', 'attack3', 'attack4', 'attack5'];
 
 function generateBackgroundGraphics() {
+    generatePlayersStatusTexts();
     var background = generateRect(generateLocation(0, 0), '#004C00', 1400, 600, String('background'));
     var handBackground = generateRect(generateLocation(0, 600), '#BE9B7B', 1400, 200, String('background'));
     var messageBackground = generateRect(generateLocation(0, 500), 'black', 400, 200, String('background'));
     var table = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
     for (let i = 0; i < 6; i++) {
         attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, 'attack' + i);
-        defenseSquares[i] = generateRect(defenseSquareLocations[i],'#4C814C', 40, 56, 'defense' + i);
+        defenseSquares[i] = generateRect(defenseSquareLocations[i], '#4C814C', 40, 56, 'defense' + i);
     }
     var attackText = generateTextObject('Attack', generateLocation(680, 120), 20, '#A40B0B');
     var defenseText = generateTextObject('Defense', generateLocation(680, 300), 20, '#A40B0B');
@@ -52,7 +56,7 @@ function generateBackgroundGraphics() {
     canvas.add(background, table);
     canvas.add(messageBackground);
     canvas.add(handBackground);
-    for (let i = 0; i < 6; i ++) {
+    for (let i = 0; i < 6; i++) {
         canvas.add(attackSquares[i], defenseSquares[i]);
     }
     canvas.add(attackText, defenseText);
@@ -275,7 +279,7 @@ function drawCardInHand(card, position) {
     cardsDrawnInHand.push(cards[card]);
 }
 
-function clearCardsInHand() {
+function eraseCardsInHand() {
     for (let i = 0; i < cardsDrawnInHand.length; i++) {
         let card = cardsDrawnInHand.pop();
         eraseCard(card.id);
@@ -354,10 +358,34 @@ function setPickupButtonVisibility(visible) {
     }
 }
 
+function setAttackButtonOpacity(opacity) {
+    $('#attackButton').fadeTo('fast', opacity);
+}
+
+function setDefenseButtonOpacity(opacity) {
+    $('#defenseButton').fadeTo('fast', opacity);
+}
+
+function setDoneButtonOpacity(opacity) {
+    $('#doneButton').fadeTo('fast', opacity);
+}
+
+function setSlideButtonOpacity(opacity) {
+    $('#slideButton').fadeTo('fast', opacity);
+}
+
+function setPickupButtonVisibility(opacity) {
+    $('#pickupButton').fadeTo('fast', opacity);
+}
+
 function setGameBoardState(newGameBoardState) {
     gameBoardState = newGameBoardState;
 }
 
 function getGameBoardState() {
     return gameBoardState;
+}
+
+function getCanvas() {
+    return canvas;
 }

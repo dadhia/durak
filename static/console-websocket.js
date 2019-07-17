@@ -1,3 +1,11 @@
+var joinedGameID = 0;
+var maxCardsToAddThisTurn = 0;
+var cardsWhichCanBeAdded;
+var openAttackSquare;
+var cardSelected;
+var trumpCard;
+var cardsOnTable;
+
 function joinedGameView() {
     $('#messageBlock').show();
     $('#createGameBlock').hide();
@@ -39,7 +47,24 @@ function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
         socket.emit('joinLobbyGame', gameID);
     });
 }
-var joinedGameID = 0;
+
+function canvasMouseClickHandler(options) {
+    if (options.target.type === 'image') {
+        let id = options.target.id;
+        if ((id !== trumpCard) && !cardsOnTable.has(id)) {
+            cardSelected = id;
+        }
+    } else if (options.target.type === 'rect') {
+        if (cardSelected !== '') {
+            let id = options.target.id;
+            if (id === attackCardNames[openAttackSquare]) {
+                drawCard(cardSelected, attackSquareLocations[0]);
+                cardSelected = '';
+                cardsOnTable.add(cardSelected);
+            }
+        }
+    }
+}
 
 $(document).ready(function() {
     var socket = io.connect('http://127.0.0.1:5000');
@@ -115,9 +140,16 @@ $(document).ready(function() {
         console.log("Starting game with id = " + game_id);
         gameView();
         prepareCanvas(numPlayers, screenNamesList);
+        getCanvas().on('mouse:down', canvasMouseClickHandler);
+        setAttackButtonVisibility(false);
+        setDefenseButtonVisibility(false);
+        setDoneButtonVisibility(false);
+        setSlideButtonVisibility(false);
+        setPickupButtonVisibility(false);
     });
 
     socket.on('displayHand', function(hand) {
+       eraseCardsInHand();
        for (let i = 0; i < hand.length; i++) {
            drawCardInHand(hand[i], i);
        }
@@ -137,6 +169,7 @@ $(document).ready(function() {
 
     socket.on('displayTrumpCard', function(card) {
         drawTrumpCard(card);
+        trumpCard = card;
     });
 
     socket.on('displayCardsDiscarded', function(numCards) {
@@ -163,6 +196,22 @@ $(document).ready(function() {
     socket.on('drawAdding', drawAdding);
     socket.on('eraseAdding', eraseAdding);
 
+    socket.on('onAttack', function(maxCards) {
+        setGameBoardState(ON_ATTACK_STATE);
+        setAttackButtonVisibility(0.5);
+        cardsWhichCanBeAdded = new Set();
+        closeAttackSquares([1, 2, 3, 4, 5]);
+        closeDefenseSquares([1, 2, 3, 4, 5]);
+        maxCardsToAddThisTurn = maxCards;
+        openAttackSquare = 0;
+        cardsOnTable = new Set();
+        cardSelected = '';
+    });
+
+    socket.on('disableGameBoard', function() {
+        setGameBoardState(DISABLED_STATE);
+    });
+
     $('#newGameButton').on('click', function() {
         var numPlayers = $('#numPlayers input:radio:checked').val();
         socket.emit('newGame', numPlayers);
@@ -177,5 +226,4 @@ $(document).ready(function() {
         console.log("cancelling lobby game " + joinedGameID);
         socket.emit('cancelLobbyGame', joinedGameID);
     });
-
 });
