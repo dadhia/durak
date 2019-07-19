@@ -13,11 +13,15 @@ class InProgressGame:
         self.game = game
         self.player_info = db_operations.get_players_in_game(game.id)
         self.room_name = room_manager.get_room_name(game.id)
+        self.attack_cards = []
+        self.defense_cards = []
+        self.attack_cards_added = 0
+        self.defense_cards_added = 0
         # TODO add seat position into database for statistical purposes - may also be useful for AI training
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
         self.__initialize_game()
-        self.__transition_state()
+        self.transition_state(None, None, None)
 
     def __acquire_session_ids(self):
         self.session_ids = []
@@ -101,16 +105,33 @@ class InProgressGame:
     def __enable_attack_ui(self):
         max_cards = min(len(self.hands[self.defense_index]), 4)
         emit(events.ON_ATTACK, max_cards, room=self.session_ids[self.attack_index])
-        for i in range(self.game.num_player):
-            if i is self.attack_index:
+        for i in range(self.game.num_players):
+            if i is not self.attack_index:
+                emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
+        print('Attack UI enabled.')
+
+    def __enable_defense_ui(self):
+        defense_cards_to_add = self.attack_cards_added - self.defense_cards_added
+        emit(events.DISPLAY_CARDS_ON_TABLE, self.attack_cards, self.defense_cards, room=self.room_name)
+        cards_on_table = self.attack_cards + self.defense_cards
+        emit(events.ON_DEFENSE, defense_cards_to_add, cards_on_table, room=self.session_ids[self.defense_index])
+        for i in range(self.game.num_players):
+            if i is not self.defense_index:
                 emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
 
     def __get_screen_name(self, player_index):
         return self.player_info[player_index].screen_name
 
-    def __transition_state(self):
+    def transition_state(self, response, attack_cards, defense_cards):
         if self.game_state is GameStates.INIT:
             self.__init_to_attack_transition()
+        elif self.game_state is GameStates.ON_ATTACK and response == 'onAttackResponse':
+            self.attack_cards = attack_cards
+            self.defense_cards = defense_cards
+            for card in attack_cards:
+                self.__remove_card_from_deck(self.attack_index, card)
+                self.attack_cards_added += 1
+            self.__attack_to_defend_transition()
         self.__update_game()
 
     def __init_to_attack_transition(self):
@@ -122,6 +143,9 @@ class InProgressGame:
         self.__draw_attacking_label()
         self.__draw_defending_label()
 
+    def __attack_to_defend_transition(self):
+        self.game_state = GameStates.ON_DEFENSE
+
     def __update_game(self):
         if self.game_state is GameStates.ON_ATTACK:
             self.__display_cards_remaining()
@@ -132,6 +156,7 @@ class InProgressGame:
         elif self.game_state is GameStates.ON_DEFENSE:
             self.__sort_and_display_updated_hands()
             self.__send_on_defense_message()
+            self.__enable_defense_ui()
 
     def __construct_on_attack_message(self):
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
@@ -172,6 +197,10 @@ class InProgressGame:
 
     def __draw_adding_label(self):
         emit(events.DRAW_ADDING, (self.game.num_players, self.adding_index), room=self.room_name)
+
+    def __remove_card_from_deck(self, player_index, card):
+        self.hands[player_index].remove(card)
+
 
 
 class DurakDeck:

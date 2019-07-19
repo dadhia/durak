@@ -389,3 +389,7 @@ function getGameBoardState() {
 function getCanvas() {
     return canvas;
 }
+
+function getCardDigit(card) {
+    return card.substring(1);
+}

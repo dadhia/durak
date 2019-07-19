@@ -1,10 +1,13 @@
 var joinedGameID = 0;
 var maxCardsToAddThisTurn = 0;
-var cardsWhichCanBeAdded;
 var openAttackSquare;
 var cardSelected;
 var trumpCard;
-var cardsOnTable;
+var cardsOnTable = new Set();
+var digitsOnTable = new Set();
+var cardsOnAttackSide;
+var cardsOnDefenseSide;
+var cardAdded;
 
 function joinedGameView() {
     $('#messageBlock').show();
@@ -48,20 +51,57 @@ function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
     });
 }
 
-function canvasMouseClickHandler(options) {
-    if (options.target.type === 'image') {
+function cardInHand(card) {
+    return (card !== 'discard') && (card !== 'deck') && (card !== trumpCard) && !cardsOnTable.has(card);
+}
+
+function cardPlayable(card) {
+    let cardDigit = getCardDigit(card);
+    return (cardsOnTable.size === 0) || digitsOnTable.has(cardDigit);
+}
+
+function captureCard(options) {
+    let card = options.target.id;
+    if (cardInHand(card) && cardPlayable(card)) {
+         cardSelected = card;
+         console.log(cardSelected);
+    }
+}
+
+function placeCardDuringAttackState(options) {
+    if (cardSelected !== '') {
         let id = options.target.id;
-        if ((id !== trumpCard) && !cardsOnTable.has(id)) {
-            cardSelected = id;
+        console.log(id);
+        if (id === attackCardNames[openAttackSquare]) {
+             drawCard(cardSelected, attackSquareLocations[openAttackSquare]);
+             cardsOnAttackSide.push(cardSelected);
+             digitsOnTable.add(getCardDigit(cardSelected));
+             cardsOnTable.add(cardSelected);
+             cardSelected = '';
+             maxCardsToAddThisTurn--;
+             cardAdded = true;
+             if (maxCardsToAddThisTurn !== 0) {
+                openAttackSquare++;
+                openAttackSquares([openAttackSquare]);
+                openDefenseSquares([openAttackSquare]);
+             }
+        }
+    }
+}
+
+function canvasMouseClickHandler(options) {
+    console.log('click!');
+    console.log(options.target.type);
+    if (options.target.type === 'image') {
+        console.log('image');
+        if (getGameBoardState() !== DISABLED_STATE) {
+            console.log('not disabled');
+            captureCard(options);
         }
     } else if (options.target.type === 'rect') {
-        if (cardSelected !== '') {
-            let id = options.target.id;
-            if (id === attackCardNames[openAttackSquare]) {
-                drawCard(cardSelected, attackSquareLocations[0]);
-                cardSelected = '';
-                cardsOnTable.add(cardSelected);
-            }
+        console.log('rect');
+        if (getGameBoardState() === ON_ATTACK_STATE) {
+            placeCardDuringAttackState(options);
         }
     }
 }
@@ -136,8 +176,9 @@ $(document).ready(function() {
         $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
     });
 
-    socket.on('initGame', function(game_id, numPlayers, screenNamesList) {
-        console.log("Starting game with id = " + game_id);
+    socket.on('initGame', function(gameID, numPlayers, screenNamesList) {
+        console.log("Starting game with id = " + gameID);
+        joinedGameID = gameID;
         gameView();
         prepareCanvas(numPlayers, screenNamesList);
         getCanvas().on('mouse:down', canvasMouseClickHandler);
@@ -157,10 +198,11 @@ $(document).ready(function() {
 
     socket.on('displayCardsRemaining', function(numCards) {
         updateCardsRemaining(numCards);
-        if (numCards == 0) {
+        if (numCards === 0) {
             eraseDeck();
             eraseTrumpCard();
-        } else if (numCards == 1) {
+            trumpCard = '';
+        } else if (numCards === 1) {
             eraseDeck();
         } else {
             drawDeck();
@@ -197,19 +239,37 @@ $(document).ready(function() {
     socket.on('eraseAdding', eraseAdding);
 
     socket.on('onAttack', function(maxCards) {
+        console.log('moving to attack state');
         setGameBoardState(ON_ATTACK_STATE);
+        console.log(getGameBoardState());
+
         setAttackButtonVisibility(0.5);
-        cardsWhichCanBeAdded = new Set();
         closeAttackSquares([1, 2, 3, 4, 5]);
         closeDefenseSquares([1, 2, 3, 4, 5]);
         maxCardsToAddThisTurn = maxCards;
         openAttackSquare = 0;
-        cardsOnTable = new Set();
+        cardsOnTable.clear();
+        digitsOnTable.clear();
         cardSelected = '';
+        cardsOnAttackSide = [];
+        cardsOnDefenseSide = [];
+        cardAdded = false;
     });
 
     socket.on('disableGameBoard', function() {
+        console.log('disabled state');
         setGameBoardState(DISABLED_STATE);
+        console.log(getGameBoardState());
+    });
+
+    socket.on('displayCardsOnTable', function(attackCards, defenseCards) {
+       console.log('displaying cards');
+       for (let i = 0; i < attackCards.length; i++) {
+           drawCard(attackCards[i], attackSquareLocations[i]);
+       }
+       for (let i = 0; i < defenseCards.length; i++) {
+           drawCard(defenseCards[i], defenseSquareLocations[i]);
+       }
     });
 
     $('#newGameButton').on('click', function() {
@@ -225,5 +285,14 @@ $(document).ready(function() {
     $('#cancelGameButton').on('click', function() {
         console.log("cancelling lobby game " + joinedGameID);
         socket.emit('cancelLobbyGame', joinedGameID);
+    });
+
+    $('#attackButton').on('click', function() {
+        if (getGameBoardState() === ON_ATTACK_STATE) {
+            if (cardAdded) {
+                console.log('sending gameResponse');
+                socket.emit('gameResponse', joinedGameID, 'onAttackResponse', cardsOnAttackSide, cardsOnDefenseSide);
+            }
+        }
     });
 });
