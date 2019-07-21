@@ -7,7 +7,8 @@ const userStatusTextLocation = generateLocation(2, 500);
 var cards = {};
 var gameBoardState;
 const DISABLED_STATE = 'DISABLED';
-const ON_ATTACK_STATE = 'ATTACK';
+const ON_ATTACK_STATE = 'ON_ATTACK';
+const ON_DEFENSE_STATE = 'ON_DEFENSE';
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
@@ -38,7 +39,6 @@ var objectToSquare = {};
 
 var attackSquares = new Array(6);
 var defenseSquares = new Array(6);
-var attackCardNames = ['attack0', 'attack1', 'attack2', 'attack3', 'attack4', 'attack5'];
 
 function generateBackgroundGraphics() {
     generatePlayersStatusTexts();

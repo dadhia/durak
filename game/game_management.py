@@ -114,7 +114,7 @@ class InProgressGame:
         defense_cards_to_add = self.attack_cards_added - self.defense_cards_added
         emit(events.DISPLAY_CARDS_ON_TABLE, self.attack_cards, self.defense_cards, room=self.room_name)
         cards_on_table = self.attack_cards + self.defense_cards
-        emit(events.ON_DEFENSE, defense_cards_to_add, cards_on_table, room=self.session_ids[self.defense_index])
+        emit(events.ON_DEFENSE, (defense_cards_to_add, cards_on_table), room=self.session_ids[self.defense_index])
         for i in range(self.game.num_players):
             if i is not self.defense_index:
                 emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
@@ -200,7 +200,6 @@ class InProgressGame:
 
     def __remove_card_from_deck(self, player_index, card):
         self.hands[player_index].remove(card)
-
 
 
 class DurakDeck:

@@ -1,13 +1,14 @@
 var joinedGameID = 0;
 var maxCardsToAddThisTurn = 0;
-var openAttackSquare;
+var openSquare;
 var cardSelected;
 var trumpCard;
-var cardsOnTable = new Set();
+var cardsOnTableUI = new Set();
 var digitsOnTable = new Set();
 var cardsOnAttackSide;
 var cardsOnDefenseSide;
 var cardAdded;
+var requiredCardsToAddThisTurn = 0;
 
 function joinedGameView() {
     $('#messageBlock').show();
@@ -52,15 +53,15 @@ function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
 }
 
 function cardInHand(card) {
-    return (card !== 'discard') && (card !== 'deck') && (card !== trumpCard) && !cardsOnTable.has(card);
+    return (card !== 'discard') && (card !== 'deck') && (card !== trumpCard) && !cardsOnTableUI.has(card);
 }
 
 function cardPlayable(card) {
     let cardDigit = getCardDigit(card);
-    return (cardsOnTable.size === 0) || digitsOnTable.has(cardDigit);
+    return (cardsOnTableUI.size === 0) || digitsOnTable.has(cardDigit);
 }
 
-function captureCard(options) {
+function captureCardOnAttack(options) {
     let card = options.target.id;
     if (cardInHand(card) && cardPlayable(card)) {
          cardSelected = card;
@@ -68,23 +69,49 @@ function captureCard(options) {
     }
 }
 
+function captureCardOnDefense(options) {
+    let card = options.target.id;
+    if (cardInHand(card)) {
+        cardSelected = card;
+        console.log(card);
+    }
+}
+
 function placeCardDuringAttackState(options) {
     if (cardSelected !== '') {
         let id = options.target.id;
         console.log(id);
-        if (id === attackCardNames[openAttackSquare]) {
-             drawCard(cardSelected, attackSquareLocations[openAttackSquare]);
+        if (id === 'attack' + openSquare) {
+             drawCard(cardSelected, attackSquareLocations[openSquare]);
              cardsOnAttackSide.push(cardSelected);
              digitsOnTable.add(getCardDigit(cardSelected));
-             cardsOnTable.add(cardSelected);
+             cardsOnTableUI.add(cardSelected);
              cardSelected = '';
              maxCardsToAddThisTurn--;
              cardAdded = true;
              if (maxCardsToAddThisTurn !== 0) {
-                openAttackSquare++;
-                openAttackSquares([openAttackSquare]);
-                openDefenseSquares([openAttackSquare]);
+                openSquare++;
+                openAttackSquares([openSquare]);
              }
+        }
+    }
+}
+
+function placeCardDuringOnDefenseState(options) {
+    if (cardSelected !== '') {
+        let id = options.target.id;
+        console.log(id);
+        if (id === 'defense' + openSquare) {
+            drawCard(cardSelected, defenseSquareLocations[openSquare]);
+            cardsOnDefenseSide.push(cardSelected);
+            digitsOnTable.add(getCardDigit(cardSelected));
+            cardsOnTableUI.add(cardSelected);
+            cardSelected = '';
+            requiredCardsToAddThisTurn--;
+            if (requiredCardsToAddThisTurn === 0) {
+                openSquare++;
+                openDefenseSquares([openSquare]);
+            }
         }
     }
 }
@@ -94,16 +121,27 @@ function canvasMouseClickHandler(options) {
     console.log(options.target.type);
     if (options.target.type === 'image') {
         console.log('image');
-        if (getGameBoardState() !== DISABLED_STATE) {
-            console.log('not disabled');
-            captureCard(options);
+        if (getGameBoardState() === ON_ATTACK_STATE) {
+            captureCardOnAttack(options);
+        } else if (getGameBoardState() === ON_DEFENSE_STATE) {
+            captureCardOnDefense(options);
         }
     } else if (options.target.type === 'rect') {
         console.log('rect');
         if (getGameBoardState() === ON_ATTACK_STATE) {
             placeCardDuringAttackState(options);
+        } else if (getGameBoardState() === ON_DEFENSE_STATE) {
+            placeCardDuringOnDefenseState(options);
         }
     }
+}
+
+function hideAllGameplayButtons() {
+    setAttackButtonVisibility(false);
+    setDefenseButtonVisibility(false);
+    setDoneButtonVisibility(false);
+    setSlideButtonVisibility(false);
+    setPickupButtonVisibility(false);
 }
 
 $(document).ready(function() {
@@ -182,11 +220,7 @@ $(document).ready(function() {
         gameView();
         prepareCanvas(numPlayers, screenNamesList);
         getCanvas().on('mouse:down', canvasMouseClickHandler);
-        setAttackButtonVisibility(false);
-        setDefenseButtonVisibility(false);
-        setDoneButtonVisibility(false);
-        setSlideButtonVisibility(false);
-        setPickupButtonVisibility(false);
+        hideAllGameplayButtons();
     });
 
     socket.on('displayHand', function(hand) {
@@ -242,13 +276,13 @@ $(document).ready(function() {
         console.log('moving to attack state');
         setGameBoardState(ON_ATTACK_STATE);
         console.log(getGameBoardState());
-
-        setAttackButtonVisibility(0.5);
+        hideAllGameplayButtons();
+        setAttackButtonVisibility(true);
         closeAttackSquares([1, 2, 3, 4, 5]);
-        closeDefenseSquares([1, 2, 3, 4, 5]);
+        closeDefenseSquares([0, 1, 2, 3, 4, 5]);
         maxCardsToAddThisTurn = maxCards;
-        openAttackSquare = 0;
-        cardsOnTable.clear();
+        openSquare = 0;
+        cardsOnTableUI.clear();
         digitsOnTable.clear();
         cardSelected = '';
         cardsOnAttackSide = [];
@@ -256,19 +290,46 @@ $(document).ready(function() {
         cardAdded = false;
     });
 
+    socket.on('onDefense', function(cardsToAdd, cardsOnTable) {
+        console.log('moving to on defense state');
+        setGameBoardState(ON_DEFENSE_STATE);
+        console.log(getGameBoardState());
+        hideAllGameplayButtons();
+        setPickupButtonVisibility(true);
+        requiredCardsToAddThisTurn = cardsToAdd;
+        cardsOnTableUI = new Set(cardsOnTable);
+        digitsOnTable.clear();
+        for (let i = 0; i < cardsOnTable.length; i++) {
+            digitsOnTable.add(getCardDigit(cardsOnTable[i]));
+        }
+        cardSelected = '';
+        openSquare = 0;
+    });
+
     socket.on('disableGameBoard', function() {
         console.log('disabled state');
         setGameBoardState(DISABLED_STATE);
         console.log(getGameBoardState());
+        hideAllGameplayButtons();
     });
 
     socket.on('displayCardsOnTable', function(attackCards, defenseCards) {
+       cardsOnAttackSide = attackCards;
+       cardsOnDefenseSide = defenseCards;
        console.log('displaying cards');
        for (let i = 0; i < attackCards.length; i++) {
+           openAttackSquares([i]);
            drawCard(attackCards[i], attackSquareLocations[i]);
        }
+       for (let i = attackCards.length; i < 6; i++) {
+           closeAttackSquares([i]);
+       }
        for (let i = 0; i < defenseCards.length; i++) {
+           openAttackSquares([i]);
            drawCard(defenseCards[i], defenseSquareLocations[i]);
+       }
+       for (let i = attackCards.length; i < 6; i++) {
+           closeAttackSquares([i]);
        }
     });
 
@@ -293,6 +354,20 @@ $(document).ready(function() {
                 console.log('sending gameResponse');
                 socket.emit('gameResponse', joinedGameID, 'onAttackResponse', cardsOnAttackSide, cardsOnDefenseSide);
             }
+        }
+    });
+
+    $('#pickupButton').on('click', function() {
+        if (getGameBoardState() === ON_DEFENSE_STATE) {
+            console.log('sending pickup gameResponse');
+            socket.emit('gameResponse', joinedGameID, 'pickup', cardsOnAttackSide, cardsOnDefenseSide);
+        }
+    });
+
+    $('#slideButton').on('click', function() {
+        if (getGameBoardState() === ON_DEFENSE_STATE) {
+            console.log('sending slide gameResponse');
+            socket.emit('gameResponse', joinedGameID, 'slide', cardsOnAttackSide, cardsOnDefenseSide);
         }
     });
 });
