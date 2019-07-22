@@ -108,16 +108,14 @@ class InProgressGame:
         for i in range(self.game.num_players):
             if i is not self.attack_index:
                 emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
-        print('Attack UI enabled.')
+                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards), room=self.session_ids[i])
 
     def __enable_defense_ui(self):
-        defense_cards_to_add = self.attack_cards_added - self.defense_cards_added
-        emit(events.DISPLAY_CARDS_ON_TABLE, self.attack_cards, self.defense_cards, room=self.room_name)
-        cards_on_table = self.attack_cards + self.defense_cards
-        emit(events.ON_DEFENSE, (defense_cards_to_add, cards_on_table), room=self.session_ids[self.defense_index])
+        emit(events.ON_DEFENSE, (self.attack_cards, self.defense_cards), room=self.session_ids[self.defense_index])
         for i in range(self.game.num_players):
             if i is not self.defense_index:
                 emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
+                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards), room=self.session_ids[i])
 
     def __get_screen_name(self, player_index):
         return self.player_info[player_index].screen_name
@@ -144,6 +142,7 @@ class InProgressGame:
         self.__draw_defending_label()
 
     def __attack_to_defend_transition(self):
+        """ Takes the game from ON_ATTACK to ON_DEFENSE -- the first opportunity to defend. """
         self.game_state = GameStates.ON_DEFENSE
 
     def __update_game(self):

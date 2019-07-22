@@ -136,12 +136,31 @@ function canvasMouseClickHandler(options) {
     }
 }
 
-function hideAllGameplayButtons() {
+function hideAllGamePlayButtons() {
     setAttackButtonVisibility(false);
     setDefenseButtonVisibility(false);
     setDoneButtonVisibility(false);
     setSlideButtonVisibility(false);
     setPickupButtonVisibility(false);
+}
+
+function displayCardsOnTable(attackCards, defenseCards) {
+    cardsOnAttackSide = attackCards;
+    cardsOnDefenseSide = defenseCards;
+    for (let i = 0; i < attackCards.length; i++) {
+        openAttackSquares([i]);
+        drawCard(attackCards[i], attackSquareLocations[i]);
+    }
+    for (let i = attackCards.length; i < 6; i++) {
+        closeAttackSquares([i]);
+    }
+    for (let i = 0; i < defenseCards.length; i++) {
+        openDefenseSquares([i]);
+        drawCard(defenseCards[i], defenseSquareLocations[i]);
+    }
+    for (let i = attackCards.length; i < 6; i++) {
+        closeDefenseSquares([i]);
+    }
 }
 
 $(document).ready(function() {
@@ -220,7 +239,7 @@ $(document).ready(function() {
         gameView();
         prepareCanvas(numPlayers, screenNamesList);
         getCanvas().on('mouse:down', canvasMouseClickHandler);
-        hideAllGameplayButtons();
+        hideAllGamePlayButtons();
     });
 
     socket.on('displayHand', function(hand) {
@@ -276,8 +295,9 @@ $(document).ready(function() {
         console.log('moving to attack state');
         setGameBoardState(ON_ATTACK_STATE);
         console.log(getGameBoardState());
-        hideAllGameplayButtons();
+        hideAllGamePlayButtons();
         setAttackButtonVisibility(true);
+        openAttackSquares([0]);
         closeAttackSquares([1, 2, 3, 4, 5]);
         closeDefenseSquares([0, 1, 2, 3, 4, 5]);
         maxCardsToAddThisTurn = maxCards;
@@ -290,48 +310,32 @@ $(document).ready(function() {
         cardAdded = false;
     });
 
-    socket.on('onDefense', function(cardsToAdd, cardsOnTable) {
+    socket.on('onDefense', function(attackCards, defenseCards) {
         console.log('moving to on defense state');
         setGameBoardState(ON_DEFENSE_STATE);
         console.log(getGameBoardState());
-        hideAllGameplayButtons();
+        hideAllGamePlayButtons();
         setPickupButtonVisibility(true);
-        requiredCardsToAddThisTurn = cardsToAdd;
-        cardsOnTableUI = new Set(cardsOnTable);
+        requiredCardsToAddThisTurn = attackCards.length;
+        let allCards = attackCards.concat(defenseCards);
+        cardsOnTableUI = new Set(attackCards.concat(allCards));
         digitsOnTable.clear();
-        for (let i = 0; i < cardsOnTable.length; i++) {
-            digitsOnTable.add(getCardDigit(cardsOnTable[i]));
+        for (let i = 0; i < allCards.length; i++) {
+            digitsOnTable.add(getCardDigit(allCards[i]));
         }
         cardSelected = '';
         openSquare = 0;
+        displayCardsOnTable(attackCards, defenseCards);
     });
 
     socket.on('disableGameBoard', function() {
         console.log('disabled state');
         setGameBoardState(DISABLED_STATE);
         console.log(getGameBoardState());
-        hideAllGameplayButtons();
+        hideAllGamePlayButtons();
     });
 
-    socket.on('displayCardsOnTable', function(attackCards, defenseCards) {
-       cardsOnAttackSide = attackCards;
-       cardsOnDefenseSide = defenseCards;
-       console.log('displaying cards');
-       for (let i = 0; i < attackCards.length; i++) {
-           openAttackSquares([i]);
-           drawCard(attackCards[i], attackSquareLocations[i]);
-       }
-       for (let i = attackCards.length; i < 6; i++) {
-           closeAttackSquares([i]);
-       }
-       for (let i = 0; i < defenseCards.length; i++) {
-           openAttackSquares([i]);
-           drawCard(defenseCards[i], defenseSquareLocations[i]);
-       }
-       for (let i = attackCards.length; i < 6; i++) {
-           closeAttackSquares([i]);
-       }
-    });
+    socket.on('displayCardsOnTable', displayCardsOnTable);
 
     $('#newGameButton').on('click', function() {
         var numPlayers = $('#numPlayers input:radio:checked').val();
