@@ -19,6 +19,8 @@ const usernameLocations = [generateLocation(280, 90), generateLocation(640, 10),
     generateLocation(960, 410), generateLocation(640, 510), generateLocation(280, 410)];
 const statusTextLocations = [generateLocation(280, 105), generateLocation(640, 25), generateLocation(960, 110),
     generateLocation(960, 425), generateLocation(640, 525), generateLocation(280, 425)];
+const individualCardsRemainingLocations = [generateLocation(280, 120), generateLocation(640, 40), generateLocation(960, 125),
+    generateLocation(960, 440), generateLocation(640, 540), generateLocation(640, 440)];
 const playerIndices = [[1, 4], [0, 2, 4], [0, 2, 3, 5], [0, 1, 2, 3, 5], [0, 1, 2, 3, 4, 5]];
 var trumpCard;
 
@@ -39,6 +41,7 @@ var objectToSquare = {};
 
 var attackSquares = new Array(6);
 var defenseSquares = new Array(6);
+var individualCardsRemainingTexts;
 
 function generateBackgroundGraphics() {
     generatePlayersStatusTexts();
@@ -77,10 +80,16 @@ function clearUserStatusText() {
 }
 
 function generateUsernameTexts(numPlayers, names) {
+    individualCardsRemainingTexts = [];
     for (let i = 0; i < numPlayers; i++) {
         const location = usernameLocations[playerIndices[numPlayers-2][i]];
         const text = generateTextObject(names[i], location, 12, '#f4f6f8');
         canvas.add(text);
+        const cardsRemainingLocation = individualCardsRemainingLocations[playerIndices[numPlayers-2][i]]
+        let handCards = generateTextObject('Cards In Hand: 0', cardsRemainingLocation, 12, '#C6E2FF');
+        canvas.add(handCards);
+        individualCardsRemainingTexts.push(handCards);
+        console.log('hand cards text size ' + individualCardsRemainingTexts.length);
     }
 }
 
@@ -392,4 +401,14 @@ function getCanvas() {
 
 function getCardDigit(card) {
     return card.substring(1);
+}
+
+function updateCardsInHand(cardsPerHand) {
+    for (let i = 0; i < cardsPerHand.length; i++) {
+        if (cardsPerHand[i] > 0) {
+            individualCardsRemainingTexts[i].text = 'Cards in Hand: ' + cardsPerHand[i];
+        } else {
+            individualCardsRemainingTexts[i].text = 'Cards in Hand: 0 (Done)';
+        }
+    }
 }

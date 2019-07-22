@@ -290,6 +290,7 @@ $(document).ready(function() {
     socket.on('eraseDefending', eraseDefending);
     socket.on('drawAdding', drawAdding);
     socket.on('eraseAdding', eraseAdding);
+    socket.on('updateHandCounts', updateCardsInHand);
 
     socket.on('onAttack', function(maxCards) {
         console.log('moving to attack state');

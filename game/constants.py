@@ -1,0 +1,1 @@
+MIN_CARDS_PER_HAND = 6

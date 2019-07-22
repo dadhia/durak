@@ -5,6 +5,7 @@ import events
 import random
 from constants import NUM_PLAYERS_TO_LOWEST_CARD, CARD_VALUE_STRINGS_TO_INT, SUIT_TO_FULL_NAME
 from game.game_states import GameStates
+import game.constants as game_constants
 
 
 class InProgressGame:
@@ -12,11 +13,12 @@ class InProgressGame:
     def __init__(self, game):
         self.game = game
         self.player_info = db_operations.get_players_in_game(game.id)
+        self.still_playing = []
+        for i in range(self.game.num_players):
+            self.still_playing.append(False)
         self.room_name = room_manager.get_room_name(game.id)
         self.attack_cards = []
         self.defense_cards = []
-        self.attack_cards_added = 0
-        self.defense_cards_added = 0
         # TODO add seat position into database for statistical purposes - may also be useful for AI training
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
@@ -39,7 +41,7 @@ class InProgressGame:
         self.hands = []
         for i in range(self.game.num_players):
             new_hand = []
-            self.deck.draw_cards(6, new_hand)
+            self.deck.draw_cards(game_constants.MIN_CARDS_PER_HAND, new_hand)
             self.hands.append(new_hand)
         self.trump_card = self.deck.draw_card()
         self.trump_suit = self.trump_card[0]
@@ -50,16 +52,25 @@ class InProgressGame:
     def __set_defense_index(self):
         self.defense_index = (self.attack_index + 1) % self.game.num_players
 
+    def __set_drawing_index(self, initial):
+        if initial:
+            self.drawing_index = self.attack_index
+        else:
+            self.drawing_index = (self.drawing_index - 1) % self.game.num_players
+
     def __move_attack_and_defense(self):
         self.attack_index = (self.attack_index + 1) % self.game.num_players
         self.defense_index = (self.defense_index + 1) % self.game.num_players
 
     def __sort_and_display_updated_hands(self):
+        hand_counts = []
         for i in range(self.game.num_players):
             print(self.hands[i])
             list.sort(self.hands[i], key=self.__hand_sorter)
             print(self.hands[i])
             emit(events.DISPLAY_HAND, self.hands[i], room=self.session_ids[i])
+            hand_counts.append(len(self.hands[i]))
+        emit(events.UPDATE_HAND_COUNTS, hand_counts, room=self.room_name)
 
     def __display_trump_card(self):
         emit(events.DISPLAY_TRUMP_CARD, self.trump_card, room=self.room_name)
@@ -128,8 +139,13 @@ class InProgressGame:
             self.defense_cards = defense_cards
             for card in attack_cards:
                 self.__remove_card_from_deck(self.attack_index, card)
-                self.attack_cards_added += 1
             self.__attack_to_defend_transition()
+        elif self.game_state is GameStates.ON_DEFENSE and response == 'pickup':
+            self.attack_cards = attack_cards
+            self.defense_cards = defense_cards
+            for card in defense_cards:
+                self.__remove_card_from_deck(self.defense_index, card)
+            self.__on_defense_to_pickup_transition()
         self.__update_game()
 
     def __init_to_attack_transition(self):
@@ -144,6 +160,14 @@ class InProgressGame:
     def __attack_to_defend_transition(self):
         """ Takes the game from ON_ATTACK to ON_DEFENSE -- the first opportunity to defend. """
         self.game_state = GameStates.ON_DEFENSE
+
+    def __on_defense_to_pickup_transition(self):
+        max_pairings = len(self.hands[self.defense_index])
+        attack_cards_added = len(self.attack_cards)
+        if (max_pairings == attack_cards_added) or (attack_cards_added == game_constants.MIN_CARDS_PER_HAND):
+            for card in self.defense_cards + self.attack_cards:
+                self.__add_card_to_deck(self.defense_index, card)
+            self.__draw_cards_to_smaller_hands()
 
     def __update_game(self):
         if self.game_state is GameStates.ON_ATTACK:
@@ -200,6 +224,17 @@ class InProgressGame:
     def __remove_card_from_deck(self, player_index, card):
         self.hands[player_index].remove(card)
 
+    def __add_card_to_deck(self, player_index, card):
+        self.hands[player_index].append(card)
+
+    def __draw_cards_to_smaller_hands(self):
+        self.__set_drawing_index(True)
+        while (self.deck.get_cards_remaining() > 0) and (self.drawing_index != self.defense_index):
+            if len(self.hands[self.drawing_index]) < game_constants.MIN_CARDS_PER_HAND:
+                self.deck.draw_cards(1, self.hands[self.drawing_index])
+            else:
+                self.__set_drawing_index(False)
+
 
 class DurakDeck:
     """ This class manages the durak deck from construction, to drawing cards, to discarding cards. """
@@ -234,6 +269,8 @@ class DurakDeck:
             card = self.draw_card()
             if card is not None:
                 hand.append(card)
+            else:
+                break
 
     def draw_trump_card(self):
         trump_card = self.deck.pop()
