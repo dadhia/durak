@@ -14,6 +14,7 @@ class InProgressGame:
         self.game = game
         self.player_info = db_operations.get_players_in_game(game.id)
         self.still_playing = []
+        self.still_playing_count = self.game.num_players
         for i in range(self.game.num_players):
             self.still_playing.append(False)
         self.room_name = room_manager.get_room_name(game.id)
@@ -229,11 +230,29 @@ class InProgressGame:
 
     def __draw_cards_to_smaller_hands(self):
         self.__set_drawing_index(True)
-        while (self.deck.get_cards_remaining() > 0) and (self.drawing_index != self.defense_index):
+        while self.deck.no_cards_remaining() and (self.drawing_index != self.defense_index):
             if len(self.hands[self.drawing_index]) < game_constants.MIN_CARDS_PER_HAND:
                 self.deck.draw_cards(1, self.hands[self.drawing_index])
             else:
                 self.__set_drawing_index(False)
+
+    def __determine_winners_and_losers(self):
+        just_finished = []
+        still_remaining = []
+        if self.deck.no_cards_remaining():
+            for i in range(self.game.num_players):
+                if (not self.still_playing[i]) and (len(self.hands[i]) == 0):
+                    self.still_playing[i] = False
+                    self.still_playing_count -= 1
+                    just_finished.append(i)
+                elif (len(self.hands[i])) > 0:
+                    still_remaining.append(i)
+            if self.still_playing_count == 0:
+                pass
+                # TODO implement draw between just_finished players
+            elif self.still_playing_count == 1:
+                pass
+                # TODO implement loss for still_remaining which has length 1
 
 
 class DurakDeck:
@@ -279,6 +298,9 @@ class DurakDeck:
 
     def get_cards_discarded(self):
         return self.cards_discarded
+
+    def no_cards_remaining(self):
+        return len(self.deck) == 0
 
 
 def card_value_to_int(card_value_string):
