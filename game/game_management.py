@@ -6,6 +6,7 @@ import random
 from constants import NUM_PLAYERS_TO_LOWEST_CARD, CARD_VALUE_STRINGS_TO_INT, SUIT_TO_FULL_NAME
 from game.game_states import GameStates
 import game.constants as game_constants
+import constants
 
 
 class InProgressGame:
@@ -237,22 +238,45 @@ class InProgressGame:
                 self.__set_drawing_index(False)
 
     def __determine_winners_and_losers(self):
-        just_finished = []
-        still_remaining = []
+        just_finished = set()
+        still_remaining = -1
         if self.deck.no_cards_remaining():
-            for i in range(self.game.num_players):
-                if (not self.still_playing[i]) and (len(self.hands[i]) == 0):
-                    self.still_playing[i] = False
+            for player_index in range(self.game.num_players):
+                if (not self.still_playing[player_index]) and (len(self.hands[player_index]) == 0):
+                    self.still_playing[player_index] = False
                     self.still_playing_count -= 1
-                    just_finished.append(i)
-                elif (len(self.hands[i])) > 0:
-                    still_remaining.append(i)
-            if self.still_playing_count == 0:
-                pass
-                # TODO implement draw between just_finished players
-            elif self.still_playing_count == 1:
-                pass
-                # TODO implement loss for still_remaining which has length 1
+                    just_finished.add(player_index)
+                elif (len(self.hands[player_index])) > 0:
+                    still_remaining = player_index
+            self.__game_over(just_finished, still_remaining)
+
+    def __game_over(self, just_finished, still_remaining):
+        if self.still_playing_count == 0:
+            self.__game_over_with_draw(just_finished)
+        elif self.still_playing_count == 1:
+            self.__game_over_with_single_loser(still_remaining)
+
+    def __game_over_with_draw(self, just_finished):
+        loss_message = constants.DRAW_MESSAGE % len(just_finished)
+        win_message = constants.WIN_MESSAGE_WITH_DRAW % len(just_finished)
+        for player_index in range(self.game.num_players):
+            if player_index in just_finished:
+                self.__add_loss(player_index)
+                emit(events.GAME_OVER, loss_message, room=self.session_ids[player_index])
+            else:
+                emit(events.GAME_OVER, win_message, room=self.session_ids[player_index])
+
+    def __game_over_with_single_loser(self, still_remaining):
+        for player_index in range(self.game.num_players):
+            if player_index is still_remaining:
+                self.__add_loss(player_index)
+                emit(events.GAME_OVER, constants.LOSS_MESSAGE, room=self.session_ids[player_index])
+            else:
+                emit(events.GAME_OVER, constants.WIN_MESSAGE_SINGLE_LOSS, room=self.session_ids[player_index])
+
+    def __add_loss(self, player_index):
+        user_id = self.player_info[player_index].id
+        db_operations.insert_loss(user_id, self.game.id)
 
 
 class DurakDeck:

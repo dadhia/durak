@@ -2,6 +2,7 @@ from app import db
 from models.game import Game
 from models.user import User
 from models.game_played import GamePlayed
+from models.loss import Loss
 import logging
 
 
@@ -78,6 +79,13 @@ def get_players_in_game(game_id):
         .filter(GamePlayed.game_id == game_id)\
         .filter(User.id == GamePlayed.user_id)\
         .all()
+
+
+def insert_loss(user_id, game_id):
+    """ Inserts a loss into the database table for losses. """
+    loss = Loss(user_id=user_id, game_id=game_id)
+    db.session.add(loss)
+    db.session.commit()
 
 
 if __name__ == '__main__':
