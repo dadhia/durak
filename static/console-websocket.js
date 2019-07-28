@@ -15,6 +15,7 @@ function joinedGameView() {
     $('#createGameBlock').hide();
     $('#lobby').hide();
     $('#game').hide();
+    $('#gameOver').hide();
 }
 
 function lobbyView() {
@@ -22,6 +23,7 @@ function lobbyView() {
     $('#createGameBlock').show();
     $('#lobby').show();
     $('#game').hide();
+    $('#gameOver').hide();
 }
 
 function gameView() {
@@ -29,6 +31,15 @@ function gameView() {
     $('#createGameBlock').hide();
     $('#lobby').hide();
     $('#game').show();
+    $('#gameOver').hide();
+}
+
+function gameOverView() {
+    $('#messageBlock').hide();
+    $('#createGameBlock').hide();
+    $('#lobby').hide();
+    $('#game').hide();
+    $('#gameOver').show();
 }
 
 function clearLobbyGamesTable() {
@@ -193,14 +204,10 @@ $(document).ready(function() {
         joinedGameView();
     });
 
-    socket.on('returnToLobby', function() {
-        console.log("return to lobby request received");
-        returnToLobby();
-    });
-
+    socket.on('returnToLobby', returnToLobby);
     socket.on('updateWaitingMessage', updateWaitingMessage);
 
-    socket.on('$gameCancelled', function(gameID) {
+    socket.on('gameCancelled', function(gameID) {
        console.log("got a game cancelled message for game id = " + gameID);
        clearLobbyGamesTable();
        lobbyView();
@@ -275,15 +282,8 @@ $(document).ready(function() {
         }
     });
 
-    socket.on('displayTrumpSuit', function(suit) {
-        drawTrumpSuitText(suit);
-    });
-
-    socket.on('updateUserStatusMessage', function(text) {
-        console.log(text);
-        updateUserStatusText(text);
-    });
-
+    socket.on('displayTrumpSuit', drawTrumpSuitText);
+    socket.on('updateUserStatusMessage', updateUserStatusText);
     socket.on('drawAttacking', drawAttacking);
     socket.on('eraseAttacking', eraseAttacking);
     socket.on('drawDefending', drawDefending);
@@ -338,6 +338,11 @@ $(document).ready(function() {
 
     socket.on('displayCardsOnTable', displayCardsOnTable);
 
+    socket.on('gameOver', function(message) {
+       $('#gameOverText').text = message;
+       gameOverView();
+    });
+
     $('#newGameButton').on('click', function() {
         var numPlayers = $('#numPlayers input:radio:checked').val();
         socket.emit('newGame', numPlayers);
@@ -352,6 +357,8 @@ $(document).ready(function() {
         console.log("cancelling lobby game " + joinedGameID);
         socket.emit('cancelLobbyGame', joinedGameID);
     });
+
+    $('#returnToLobbyButton').on('click', returnToLobby);
 
     $('#attackButton').on('click', function() {
         if (getGameBoardState() === ON_ATTACK_STATE) {
