@@ -17,7 +17,7 @@ class InProgressGame:
         self.still_playing = []
         self.still_playing_count = self.game.num_players
         for i in range(self.game.num_players):
-            self.still_playing.append(False)
+            self.still_playing.append(True)
         self.room_name = room_manager.get_room_name(game.id)
         self.attack_cards = []
         self.defense_cards = []
@@ -52,7 +52,22 @@ class InProgressGame:
         self.__display_trump_card()
 
     def __set_defense_index(self):
+        """ Sets the defense index in accordance with the current attack index. """
         self.defense_index = (self.attack_index + 1) % self.game.num_players
+        while self.still_playing[self.defense_index] is False:
+            self.defense_index = (self.defense_index + 1) % self.game.num_players
+
+    def __move_attack_and_defense_indices(self, increment):
+        """ Move the attack index based on the increment.  Increment = 1 if fully defended, = 2 if pickup. """
+        self.attack_index = (self.attack_index + increment) % self.game.num_players
+        while self.still_playing[self.attack_index] is False:
+            self.attack_index = (self.attack_index + 1) % self.game.num_players
+        self.__set_defense_index()
+
+    def __set_slide_index(self):
+        self.slide_index = (self.defense_index + 1) % self.game.num_players
+        while self.still_playing[self.attack_index] is False:
+            self.slide_index = (self.slide_index + 1) % self.game.num_players
 
     def __set_drawing_index(self, initial):
         if initial:
@@ -60,9 +75,14 @@ class InProgressGame:
         else:
             self.drawing_index = (self.drawing_index - 1) % self.game.num_players
 
-    def __move_attack_and_defense(self):
-        self.attack_index = (self.attack_index + 1) % self.game.num_players
-        self.defense_index = (self.defense_index + 1) % self.game.num_players
+    def __move_adding_index(self, initial):
+        if initial:
+            self.adding_index = self.attack_index
+        else:
+            self.adding_index = (self.adding_index + 1) % self.game.num_players
+        while (len(self.hands[self.adding_index]) is 0) or (self.still_playing[self.adding_index] is False) \
+                or (self.adding_index == self.defense_index):
+            self.adding_index = (self.adding_index + 1) % self.game.num_players
 
     def __sort_and_display_updated_hands(self):
         hand_counts = []
@@ -95,40 +115,49 @@ class InProgressGame:
             sort_value += 14
         return sort_value
 
-    def __send_on_attack_message(self):
-        session_id = self.session_ids[self.attack_index]
-        emit(events.UPDATE_USER_STATUS_MESSAGE, self.__construct_on_attack_message(), room=session_id)
+    def __send_status_message(self, special_index, special_message, general_message):
+        """ Sends special_message to special_index player and general_message to all other players. """
+        emit(events.UPDATE_USER_STATUS_MESSAGE, special_message, room=self.session_ids[special_index])
+        for player_index in range(self.game.num_players):
+            if player_index is not special_index:
+                emit(events.UPDATE_USER_STATUS_MESSAGE, general_message, room=self.session_ids[player_index])
 
-        general_status_message = self.__construct_on_attack_status_message()
-        for i in range(self.game.num_players):
-            if i is self.attack_index:
-                continue
-            emit(events.UPDATE_USER_STATUS_MESSAGE, general_status_message, room=self.session_ids[i])
+    def __send_on_attack_message(self):
+        self.__send_status_message(self.attack_index, self.__construct_on_attack_message(),
+                                   self.__construct_on_attack_status_message())
 
     def __send_on_defense_message(self):
-        session_id = self.session_ids[self.defense_index]
-        emit(events.UPDATE_USER_STATUS_MESSAGE, self.__construct_on_defense_message(), room=session_id)
+        self.__send_status_message(self.defense_index, self.__construct_on_defense_message(),
+                                   self.__construct_on_defense_status_message())
 
-        general_status_message = self.__construct_on_defense_status_message()
-        for i in range(self.game.num_players):
-            if i is self.defense_index:
-                continue
-            emit(events.UPDATE_USER_STATUS_MESSAGE, general_status_message, room=self.session_ids[i])
+    def __send_adding_message(self):
+        self.__send_status_message(self.adding_index, self.__construct_adding_message(),
+                                   self.__construct_adding_status_message())
+
+    def __disable_boards(self, special_index):
+        """ Shows current cards and disables board for all players besides special_index. """
+        for player_index in range(self.game.num_players):
+            if player_index is not special_index:
+                emit(events.DISABLE_GAME_BOARD, room=self.session_ids[player_index])
+                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards), room=self.session_ids)
 
     def __enable_attack_ui(self):
         max_cards = min(len(self.hands[self.defense_index]), 4)
         emit(events.ON_ATTACK, max_cards, room=self.session_ids[self.attack_index])
-        for i in range(self.game.num_players):
-            if i is not self.attack_index:
-                emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
-                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards), room=self.session_ids[i])
+        self.__disable_boards(self.attack_index)
 
     def __enable_defense_ui(self):
-        emit(events.ON_DEFENSE, (self.attack_cards, self.defense_cards), room=self.session_ids[self.defense_index])
-        for i in range(self.game.num_players):
-            if i is not self.defense_index:
-                emit(events.DISABLE_GAME_BOARD, room=self.session_ids[i])
-                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards), room=self.session_ids[i])
+        slide_to_player_hand_size = len(self.hands[self.slide_index])
+        emit(events.ON_DEFENSE, (self.attack_cards, self.defense_cards, slide_to_player_hand_size),
+             room=self.session_ids[self.defense_index])
+        self.__disable_boards(self.defense_index)
+
+    def __enable_adding_ui(self):
+        max_cards = game_constants.MAX_CARDS_PER_ATTACK - len(self.attack_cards)
+        max_cards = min(len(self.hands[self.defense_index]), max_cards)
+        emit(events.ADDING, (self.attack_cards, self.defense_cards, max_cards),
+             room=self.session_ids[self.adding_index])
+        self.__disable_boards(self.adding_index)
 
     def __get_screen_name(self, player_index):
         return self.player_info[player_index].screen_name
@@ -162,14 +191,18 @@ class InProgressGame:
     def __attack_to_defend_transition(self):
         """ Takes the game from ON_ATTACK to ON_DEFENSE -- the first opportunity to defend. """
         self.game_state = GameStates.ON_DEFENSE
+        self.__set_slide_index()
 
     def __on_defense_to_pickup_transition(self):
         max_pairings = len(self.hands[self.defense_index])
         attack_cards_added = len(self.attack_cards)
-        if (max_pairings == attack_cards_added) or (attack_cards_added == game_constants.MIN_CARDS_PER_HAND):
+        if (max_pairings == attack_cards_added) or (attack_cards_added == game_constants.MAX_CARDS_PER_ATTACK):
             for card in self.defense_cards + self.attack_cards:
                 self.__add_card_to_deck(self.defense_index, card)
             self.__draw_cards_to_smaller_hands()
+        else:
+            self.__move_adding_index(True)
+            self.game_state = GameStates.ADDING
 
     def __update_game(self):
         if self.game_state is GameStates.ON_ATTACK:
@@ -182,6 +215,10 @@ class InProgressGame:
             self.__sort_and_display_updated_hands()
             self.__send_on_defense_message()
             self.__enable_defense_ui()
+        elif self.game_state is GameStates.ADDING:
+            self.__sort_and_display_updated_hands()
+            self.__send_adding_message()
+            self.__enable_adding_ui()
 
     def __construct_on_attack_message(self):
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
@@ -199,11 +236,11 @@ class InProgressGame:
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
         return on_defense_screen_name + ' is defending.'
 
-    def __construct_on_adding_message(self):
+    def __construct_adding_message(self):
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
         return 'YOUR TURN: Adding to attack on ' + on_defense_screen_name
 
-    def __construct_on_adding_status_message(self):
+    def __construct_adding_status_message(self):
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
         on_adding_screen_name = self.__get_screen_name(self.adding_index)
         return on_adding_screen_name + ' is adding to attack on ' + on_defense_screen_name
@@ -230,6 +267,8 @@ class InProgressGame:
         self.hands[player_index].append(card)
 
     def __draw_cards_to_smaller_hands(self):
+        if self.deck.no_cards_remaining():
+            return
         self.__set_drawing_index(True)
         while self.deck.no_cards_remaining() and (self.drawing_index != self.defense_index):
             if len(self.hands[self.drawing_index]) < game_constants.MIN_CARDS_PER_HAND:

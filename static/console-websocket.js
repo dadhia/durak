@@ -332,7 +332,7 @@ $(document).ready(function() {
         cardAdded = false;
     });
 
-    socket.on('onDefense', function(attackCards, defenseCards) {
+    socket.on('onDefense', function(attackCards, defenseCards, totalCardsOnAttackForSlide) {
         setGameBoardState(ON_DEFENSE_STATE);
         console.log(getGameBoardState());
         hideAllGamePlayButtons();
@@ -353,7 +353,6 @@ $(document).ready(function() {
         canDefend = true;
         defenseOpenSquare = 0;
         openDefenseSquares([defenseOpenSquare]);
-
         displayCardsOnTable(attackCards, defenseCards);
     });
 
