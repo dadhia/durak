@@ -9,7 +9,8 @@ let cardsOnDefenseSide;
 let cardAdded;
 let requiredCardsToAddThisTurn = 0;
 let attackOpenSquare, defenseOpenSquare;
-let canSlide;
+let canSlide, canDefend;
+const CARDS_PER_DIGIT = 4;
 
 function joinedGameView() {
     $('#messageBlock').show();
@@ -117,21 +118,32 @@ function placeCardDuringAttackState(options) {
 function placeCardDuringOnDefenseState(options) {
     if (cardSelected !== '') {
         let id = options.target.id;
-        console.log(id);
-
-        if ((id === 'attack' + attackOpenSquare) && canSlide) {
-
-        }
-        if (id === 'defense' + defenseOpenSquare) {
-            drawCard(cardSelected, defenseSquareLocations[defenseOpenSquare]);
-            cardsOnDefenseSide.push(cardSelected);
-            digitsOnTable.add(getCardDigit(cardSelected));
+        if ( (id === 'attack' + attackOpenSquare) && canSlide && digitsOnTable.has(getCardDigit(cardSelected)) ) {
+            drawCard(cardSelected, attackSquareLocations[attackOpenSquare]);
+            cardsOnAttackSide.push(cardSelected);
             cardsOnTableUI.add(cardSelected);
             cardSelected = '';
-            requiredCardsToAddThisTurn--;
-            if (requiredCardsToAddThisTurn === 0) {
-                defenseOpenSquare++;
-                openDefenseSquares([defenseOpenSquare]);
+            canDefend = false;
+            setSlideButtonVisibility(true);
+            if (cardsOnAttackSide.length < CARDS_PER_DIGIT) {
+                attackOpenSquare++;
+                openAttackSquares([attackOpenSquare]);
+            }
+            closeDefenseSquares([defenseOpenSquare]);
+        } else if ( (id === 'defense' + defenseOpenSquare) && canDefend ) {
+            let attackCard = cardsOnAttackSide[defenseOpenSquare];
+            if (isValidDefense(attackCard, cardSelected)) {
+                drawCard(cardSelected, defenseSquareLocations[defenseOpenSquare]);
+                cardsOnDefenseSide.add(getCardDigit(cardSelected));
+                cardsOnTableUI.add(cardSelected);
+                cardSelected = '';
+                requiredCardsToAddThisTurn--;
+                if (requiredCardsToAddThisTurn === 0) {
+                    setDefenseButtonVisibility(true);
+                } else {
+                    defenseOpenSquare++;
+                    openDefenseSquares([defenseOpenSquare]);
+                }
             }
         }
     }
@@ -338,7 +350,7 @@ $(document).ready(function() {
             attackOpenSquare = attackCards.length;
             openAttackSquares([attackOpenSquare]);
         }
-
+        canDefend = true;
         defenseOpenSquare = 0;
         openDefenseSquares([defenseOpenSquare]);
 
