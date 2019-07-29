@@ -1,14 +1,15 @@
-var joinedGameID = 0;
-var maxCardsToAddThisTurn = 0;
-var openSquare;
-var cardSelected;
-var trumpCard;
-var cardsOnTableUI = new Set();
-var digitsOnTable = new Set();
-var cardsOnAttackSide;
-var cardsOnDefenseSide;
-var cardAdded;
-var requiredCardsToAddThisTurn = 0;
+let joinedGameID = 0;
+let maxCardsToAddThisTurn = 0;
+let cardSelected;
+let trumpSuit;
+let cardsOnTableUI = new Set();
+let digitsOnTable = new Set();
+let cardsOnAttackSide;
+let cardsOnDefenseSide;
+let cardAdded;
+let requiredCardsToAddThisTurn = 0;
+let attackOpenSquare, defenseOpenSquare;
+let canSlide;
 
 function joinedGameView() {
     $('#messageBlock').show();
@@ -53,8 +54,8 @@ function updateWaitingMessage(numPlayers, playersJoined, gameID) {
 }
 
 function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
-    var buttonID = 'joinGame' + gameID;
-    var nextRow = "<tr id='" + gameID + "'>" + "<td>" + email + "</td>" + "<td>" + numPlayers + "</td>" +
+    let buttonID = 'joinGame' + gameID;
+    let nextRow = "<tr id='" + gameID + "'>" + "<td>" + email + "</td>" + "<td>" + numPlayers + "</td>" +
             "<td>" + spotsRemaining + "</td>" + "<td>" +
             '<button type="button" class="btn btn-primary" id="' +  buttonID + '">Join</button></td>';
     $('#openGamesTable').append(nextRow);
@@ -88,12 +89,17 @@ function captureCardOnDefense(options) {
     }
 }
 
+function isValidDefense(attackCard, defenseCard) {
+    return ( (getCardDigit(defenseCard) > getCardDigit(attackCard))
+        || ( (getCardSuit(defenseCard) === trumpSuit) && (getCardSuit(attackCard) !== trumpSuit)) );
+}
+
 function placeCardDuringAttackState(options) {
     if (cardSelected !== '') {
         let id = options.target.id;
         console.log(id);
-        if (id === 'attack' + openSquare) {
-             drawCard(cardSelected, attackSquareLocations[openSquare]);
+        if (id === 'attack' + attackOpenSquare) {
+             drawCard(cardSelected, attackSquareLocations[attackOpenSquare]);
              cardsOnAttackSide.push(cardSelected);
              digitsOnTable.add(getCardDigit(cardSelected));
              cardsOnTableUI.add(cardSelected);
@@ -101,8 +107,8 @@ function placeCardDuringAttackState(options) {
              maxCardsToAddThisTurn--;
              cardAdded = true;
              if (maxCardsToAddThisTurn !== 0) {
-                openSquare++;
-                openAttackSquares([openSquare]);
+                attackOpenSquare++;
+                openAttackSquares([attackOpenSquare]);
              }
         }
     }
@@ -112,16 +118,20 @@ function placeCardDuringOnDefenseState(options) {
     if (cardSelected !== '') {
         let id = options.target.id;
         console.log(id);
-        if (id === 'defense' + openSquare) {
-            drawCard(cardSelected, defenseSquareLocations[openSquare]);
+
+        if ((id === 'attack' + attackOpenSquare) && canSlide) {
+
+        }
+        if (id === 'defense' + defenseOpenSquare) {
+            drawCard(cardSelected, defenseSquareLocations[defenseOpenSquare]);
             cardsOnDefenseSide.push(cardSelected);
             digitsOnTable.add(getCardDigit(cardSelected));
             cardsOnTableUI.add(cardSelected);
             cardSelected = '';
             requiredCardsToAddThisTurn--;
             if (requiredCardsToAddThisTurn === 0) {
-                openSquare++;
-                openDefenseSquares([openSquare]);
+                defenseOpenSquare++;
+                openDefenseSquares([defenseOpenSquare]);
             }
         }
     }
@@ -175,7 +185,7 @@ function displayCardsOnTable(attackCards, defenseCards) {
 }
 
 $(document).ready(function() {
-    var socket = io.connect('http://127.0.0.1:5000');
+    let socket = io.connect('http://127.0.0.1:5000');
 
     socket.on('connect', function() {
         console.log("received connect message");
@@ -272,6 +282,7 @@ $(document).ready(function() {
     socket.on('displayTrumpCard', function(card) {
         drawTrumpCard(card);
         trumpCard = card;
+        trumpSuit = getCardSuit(card);
     });
 
     socket.on('displayCardsDiscarded', function(numCards) {
@@ -293,16 +304,14 @@ $(document).ready(function() {
     socket.on('updateHandCounts', updateCardsInHand);
 
     socket.on('onAttack', function(maxCards) {
-        console.log('moving to attack state');
         setGameBoardState(ON_ATTACK_STATE);
-        console.log(getGameBoardState());
         hideAllGamePlayButtons();
         setAttackButtonVisibility(true);
         openAttackSquares([0]);
         closeAttackSquares([1, 2, 3, 4, 5]);
         closeDefenseSquares([0, 1, 2, 3, 4, 5]);
         maxCardsToAddThisTurn = maxCards;
-        openSquare = 0;
+        attackOpenSquare = 0;
         cardsOnTableUI.clear();
         digitsOnTable.clear();
         cardSelected = '';
@@ -312,20 +321,27 @@ $(document).ready(function() {
     });
 
     socket.on('onDefense', function(attackCards, defenseCards) {
-        console.log('moving to on defense state');
         setGameBoardState(ON_DEFENSE_STATE);
         console.log(getGameBoardState());
         hideAllGamePlayButtons();
         setPickupButtonVisibility(true);
         requiredCardsToAddThisTurn = attackCards.length;
         let allCards = attackCards.concat(defenseCards);
-        cardsOnTableUI = new Set(attackCards.concat(allCards));
+        cardsOnTableUI = new Set(allCards);
         digitsOnTable.clear();
         for (let i = 0; i < allCards.length; i++) {
             digitsOnTable.add(getCardDigit(allCards[i]));
         }
         cardSelected = '';
-        openSquare = 0;
+        canSlide = attackCards.length !== 4;
+        if (canSlide) {
+            attackOpenSquare = attackCards.length;
+            openAttackSquares([attackOpenSquare]);
+        }
+
+        defenseOpenSquare = 0;
+        openDefenseSquares([defenseOpenSquare]);
+
         displayCardsOnTable(attackCards, defenseCards);
     });
 
@@ -344,7 +360,7 @@ $(document).ready(function() {
     });
 
     $('#newGameButton').on('click', function() {
-        var numPlayers = $('#numPlayers input:radio:checked').val();
+        let numPlayers = $('#numPlayers input:radio:checked').val();
         socket.emit('newGame', numPlayers);
     });
 

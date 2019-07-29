@@ -403,6 +403,10 @@ function getCardDigit(card) {
     return card.substring(1);
 }
 
+function getCardSuit(card) {
+    return card.substring(0, 1);
+}
+
 function updateCardsInHand(cardsPerHand) {
     for (let i = 0; i < cardsPerHand.length; i++) {
         if (cardsPerHand[i] > 0) {

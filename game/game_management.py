@@ -248,13 +248,19 @@ class InProgressGame:
                     just_finished.add(player_index)
                 elif (len(self.hands[player_index])) > 0:
                     still_remaining = player_index
-            self.__game_over(just_finished, still_remaining)
+            game_over = self.__game_over(just_finished, still_remaining)
+            if game_over:
+                pass
+                # TODO deallocate everything associated with this game
 
     def __game_over(self, just_finished, still_remaining):
         if self.still_playing_count == 0:
             self.__game_over_with_draw(just_finished)
+            return True
         elif self.still_playing_count == 1:
             self.__game_over_with_single_loser(still_remaining)
+            return True
+        return False
 
     def __game_over_with_draw(self, just_finished):
         loss_message = constants.DRAW_MESSAGE % len(just_finished)
