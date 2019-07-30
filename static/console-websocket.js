@@ -6,11 +6,13 @@ let cardsOnTableUI = new Set();
 let digitsOnTable = new Set();
 let cardsOnAttackSide;
 let cardsOnDefenseSide;
-let cardAdded;
 let requiredCardsToAddThisTurn = 0;
 let attackOpenSquare, defenseOpenSquare;
 let canSlide, canDefend;
 const CARDS_PER_DIGIT = 4;
+const CLICK_EVENT = 'click';
+let maxCardsToSlide;
+let cardsAddedThisTurn;
 
 function joinedGameView() {
     $('#messageBlock').show();
@@ -55,12 +57,11 @@ function updateWaitingMessage(numPlayers, playersJoined, gameID) {
 }
 
 function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
-    let buttonID = 'joinGame' + gameID;
-    let nextRow = "<tr id='" + gameID + "'>" + "<td>" + email + "</td>" + "<td>" + numPlayers + "</td>" +
-            "<td>" + spotsRemaining + "</td>" + "<td>" +
-            '<button type="button" class="btn btn-primary" id="' +  buttonID + '">Join</button></td>';
+    let buttonID = `joinGame${gameID}`;
+    let nextRow = `<tr id='${gameID}'><td>${email}</td><td>${numPlayers}</td><td>${spotsRemaining}</td>` +
+            `<td><button type="button" class="btn btn-primary" id="${buttonID}">Join</button></td>`;
     $('#openGamesTable').append(nextRow);
-    $('#' + buttonID).on('click', function() {
+    $('#' + buttonID).on(CLICK_EVENT, function() {
         socket.emit('joinLobbyGame', gameID);
     });
 }
@@ -74,19 +75,15 @@ function cardPlayable(card) {
     return (cardsOnTableUI.size === 0) || digitsOnTable.has(cardDigit);
 }
 
-function captureCardOnAttack(options) {
-    let card = options.target.id;
+function captureCardOnAttack(card) {
     if (cardInHand(card) && cardPlayable(card)) {
          cardSelected = card;
-         console.log(cardSelected);
     }
 }
 
-function captureCardOnDefense(options) {
-    let card = options.target.id;
+function captureCardOnDefense(card) {
     if (cardInHand(card)) {
         cardSelected = card;
-        console.log(card);
     }
 }
 
@@ -95,76 +92,86 @@ function isValidDefense(attackCard, defenseCard) {
         || ( (getCardSuit(defenseCard) === trumpSuit) && (getCardSuit(attackCard) !== trumpSuit)) );
 }
 
-function placeCardDuringAttackState(options) {
-    if (cardSelected !== '') {
-        let id = options.target.id;
-        console.log(id);
-        if (id === 'attack' + attackOpenSquare) {
-             drawCard(cardSelected, attackSquareLocations[attackOpenSquare]);
-             cardsOnAttackSide.push(cardSelected);
-             digitsOnTable.add(getCardDigit(cardSelected));
-             cardsOnTableUI.add(cardSelected);
-             cardSelected = '';
-             maxCardsToAddThisTurn--;
-             cardAdded = true;
-             if (maxCardsToAddThisTurn !== 0) {
-                attackOpenSquare++;
-                openAttackSquares([attackOpenSquare]);
-             }
+function canAddCard() {
+    return maxCardsToAddThisTurn > cardsAddedThisTurn.length;
+}
+
+function openNextAttackSquare() {
+    attackOpenSquare++;
+    openAttackSquares([attackOpenSquare]);
+}
+
+function openNextDefenseSquare() {
+    defenseOpenSquare++;
+    openDefenseSquares([defenseOpenSquare]);
+}
+
+function addCardToAttack() {
+    drawCard(cardSelected, attackSquareLocations[attackOpenSquare]);
+    cardsOnAttackSide.push(cardSelected);
+    digitsOnTable.add(cardSelected);
+    cardsOnTableUI(cardSelected);
+    cardsAddedThisTurn.push(cardSelected);
+    cardSelected = '';
+}
+
+function addCardToDefense() {
+    drawCard(cardSelected, defenseSquareLocations[defenseOpenSquare]);
+    cardsOnDefenseSide.add(getCardDigit(cardSelected));
+    cardsOnTableUI.add(cardSelected);
+    cardsAddedThisTurn.push(cardSelected);
+    cardSelected = '';
+}
+
+function placeCardDuringAttackState(square) {
+    if ((square === getAttackSquareName(attackOpenSquare) && canAddCard())) {
+        addCardToAttack();
+        if (maxCardsToAddThisTurn > cardsAddedThisTurn.length) {
+            openNextAttackSquare();
         }
     }
 }
 
-function placeCardDuringOnDefenseState(options) {
-    if (cardSelected !== '') {
-        let id = options.target.id;
-        if ( (id === 'attack' + attackOpenSquare) && canSlide && digitsOnTable.has(getCardDigit(cardSelected)) ) {
-            drawCard(cardSelected, attackSquareLocations[attackOpenSquare]);
-            cardsOnAttackSide.push(cardSelected);
-            cardsOnTableUI.add(cardSelected);
-            cardSelected = '';
-            canDefend = false;
-            setSlideButtonVisibility(true);
-            if (cardsOnAttackSide.length < CARDS_PER_DIGIT) {
-                attackOpenSquare++;
-                openAttackSquares([attackOpenSquare]);
-            }
-            closeDefenseSquares([defenseOpenSquare]);
-        } else if ( (id === 'defense' + defenseOpenSquare) && canDefend ) {
-            let attackCard = cardsOnAttackSide[defenseOpenSquare];
-            if (isValidDefense(attackCard, cardSelected)) {
-                drawCard(cardSelected, defenseSquareLocations[defenseOpenSquare]);
-                cardsOnDefenseSide.add(getCardDigit(cardSelected));
-                cardsOnTableUI.add(cardSelected);
-                cardSelected = '';
-                requiredCardsToAddThisTurn--;
-                if (requiredCardsToAddThisTurn === 0) {
-                    setDefenseButtonVisibility(true);
-                } else {
-                    defenseOpenSquare++;
-                    openDefenseSquares([defenseOpenSquare]);
-                }
+function placeCardDuringOnDefenseState(square) {
+    if ((square === getAttackSquareName(attackOpenSquare)) && canSlide && digitsOnTable.has(getCardDigit(cardSelected)) && canAddCard()) {
+        addCardToAttack();
+        canDefend = false;
+        setSlideButtonVisibility(true);
+        if (maxCardsToAddThisTurn > cardsAddedThisTurn.length) {
+            openNextAttackSquare();
+        }
+        closeDefenseSquares([defenseOpenSquare]);
+    } else if ((square === getDefenseSquareName(defenseOpenSquare)) && canDefend) {
+        let attackCard = cardsOnAttackSide[defenseOpenSquare];
+        if (isValidDefense(attackCard, cardSelected)) {
+            canSlide = false;
+            addCardToDefense();
+            requiredCardsToAddThisTurn--;
+            if (requiredCardsToAddThisTurn === 0) {
+                setDefenseButtonVisibility(true);
+            } else {
+                openNextDefenseSquare();
             }
         }
     }
 }
 
 function canvasMouseClickHandler(options) {
-    console.log('click!');
-    console.log(options.target.type);
     if (options.target.type === 'image') {
-        console.log('image');
-        if (getGameBoardState() === ON_ATTACK_STATE) {
-            captureCardOnAttack(options);
+        let card = options.target.id;
+        if ((getGameBoardState() === ON_ATTACK_STATE) || (getGameBoardState() === ADDING_STATE)) {
+            captureCardOnAttack(card);
         } else if (getGameBoardState() === ON_DEFENSE_STATE) {
-            captureCardOnDefense(options);
+            captureCardOnDefense(card);
         }
     } else if (options.target.type === 'rect') {
-        console.log('rect');
-        if (getGameBoardState() === ON_ATTACK_STATE) {
-            placeCardDuringAttackState(options);
-        } else if (getGameBoardState() === ON_DEFENSE_STATE) {
-            placeCardDuringOnDefenseState(options);
+        let square = options.target.id;
+        if (cardSelected !== '') {
+            if ((getGameBoardState() === ON_ATTACK_STATE) || (getGameBoardState() === ADDING_STATE)) {
+                placeCardDuringAttackState(square);
+            } else if (getGameBoardState() === ON_DEFENSE_STATE) {
+                placeCardDuringOnDefenseState(options);
+            }
         }
     }
 }
@@ -178,8 +185,6 @@ function hideAllGamePlayButtons() {
 }
 
 function displayCardsOnTable(attackCards, defenseCards) {
-    cardsOnAttackSide = attackCards;
-    cardsOnDefenseSide = defenseCards;
     for (let i = 0; i < attackCards.length; i++) {
         openAttackSquares([i]);
         drawCard(attackCards[i], attackSquareLocations[i]);
@@ -196,24 +201,39 @@ function displayCardsOnTable(attackCards, defenseCards) {
     }
 }
 
+function populateCardsOnTableVariables(attackCards, defenseCards) {
+    cardsOnAttackSide = attackCards;
+    cardsOnDefenseSide = defenseCards;
+    let allCards = attackCards.concat(defenseCards);
+    cardsOnTableUI = new Set(allCards);
+    digitsOnTable.clear();
+    for (let i = 0; i < allCards.length; i++) {
+        digitsOnTable.add(getCardDigit(allCards[i]));
+    }
+}
+
+function clearCardsOnTableVariables() {
+    cardsOnAttackSide = [];
+    cardsOnDefenseSide = [];
+    cardsOnTableUI.clear();
+    digitsOnTable.clear();
+}
+
 $(document).ready(function() {
     let socket = io.connect('http://127.0.0.1:5000');
 
-    socket.on('connect', function() {
-        console.log("received connect message");
+    socket.on(CONNECT_EVENT, function() {
         lobbyView();
-        console.log("sending a requestAllLobbyGamesRequest");
-        socket.emit('requestAllLobbyGames');
+        socket.emit(REQUEST_ALL_LOBBY_GAMES_EVENT);
     });
 
     function returnToLobby() {
         clearLobbyGamesTable();
         lobbyView();
-        socket.emit('requestAllLobbyGames');
+        socket.emit(REQUEST_ALL_LOBBY_GAMES_EVENT);
     }
 
-    socket.on('waitingForPlayers', function(numPlayers, playersJoined, gameID, abilityToCancel) {
-        console.log("waiting for players message received...");
+    socket.on(WAITING_FOR_PLAYERS_EVENT, function(numPlayers, playersJoined, gameID, abilityToCancel) {
         updateWaitingMessage(numPlayers, playersJoined, gameID);
         joinedGameID = gameID;
         if (abilityToCancel) {
@@ -226,44 +246,27 @@ $(document).ready(function() {
         joinedGameView();
     });
 
-    socket.on('returnToLobby', returnToLobby);
-    socket.on('updateWaitingMessage', updateWaitingMessage);
+    socket.on(RETURN_TO_LOBBY_EVENT, returnToLobby);
+    socket.on(UPDATE_WAITING_MESSAGE_EVENT, updateWaitingMessage);
+    socket.on(ADD_LOBBY_GAME_EVENT, addSingleLobbyGame);
 
-    socket.on('gameCancelled', function(gameID) {
-       console.log("got a game cancelled message for game id = " + gameID);
-       clearLobbyGamesTable();
-       lobbyView();
-       console.log("requesting to rejoin the lobby...");
-       socket.send('rejoingLobby');
-       console.log("requesting all lobby games...");
-       socket.emit('requestAllLobbyGames');
-    });
-
-    socket.on('addLobbyGame', function(email, numPlayers, spotsRemaining, gameID) {
-        console.log("Adding lobby game with ID = " + gameID + " and spots remaining = " + spotsRemaining);
-        addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket);
-    });
-
-    socket.on('populateLobbyGames', function(lobbyGamesList) {
-        console.log("Got populate lobby games message with " + lobbyGamesList.length + " games.");
+    socket.on(POPULATE_LOBBY_GAMES_EVENT, function(lobbyGamesList) {
         for (let i = 0; i < lobbyGamesList.length; i++) {
             let game = lobbyGamesList[i];
             addSingleLobbyGame(game[0], game[1], game[2], game[3], socket);
         }
-        socket.emit('rejoinLobby');
+        socket.emit(REJOIN_LOBBY_EVENT);
     });
 
-    socket.on('removeLobbyGame', function(game_id) {
+    socket.on(REMOVE_LOBBY_GAME_EVENT, function(game_id) {
         $('table#openGamesTable tr#' + game_id).remove();
     });
 
-    socket.on('updateLobbyGame', function(remaining_spots, game_id) {
-        console.log("Updating lobby game " + game_id + " with " + remaining_spots + " remaining spots");
+    socket.on(UPDATE_LOBBY_GAME_EVENT, function(remaining_spots, game_id) {
         $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
     });
 
-    socket.on('initGame', function(gameID, numPlayers, screenNamesList) {
-        console.log("Starting game with id = " + gameID);
+    socket.on(INIT_GAME_EVENT, function(gameID, numPlayers, screenNamesList) {
         joinedGameID = gameID;
         gameView();
         prepareCanvas(numPlayers, screenNamesList);
@@ -271,14 +274,14 @@ $(document).ready(function() {
         hideAllGamePlayButtons();
     });
 
-    socket.on('displayHand', function(hand) {
+    socket.on(DISPLAY_HAND_EVENT, function(hand) {
        eraseCardsInHand();
        for (let i = 0; i < hand.length; i++) {
            drawCardInHand(hand[i], i);
        }
     });
 
-    socket.on('displayCardsRemaining', function(numCards) {
+    socket.on(DISPLAY_CARDS_REMAINING_EVENT, function(numCards) {
         updateCardsRemaining(numCards);
         if (numCards === 0) {
             eraseDeck();
@@ -291,13 +294,13 @@ $(document).ready(function() {
         }
     });
 
-    socket.on('displayTrumpCard', function(card) {
+    socket.on(DISPLAY_TRUMP_CARD_EVENT, function(card) {
         drawTrumpCard(card);
         trumpCard = card;
         trumpSuit = getCardSuit(card);
     });
 
-    socket.on('displayCardsDiscarded', function(numCards) {
+    socket.on(DISPLAY_CARDS_DISCARDED_EVENT, function(numCards) {
         if (numCards > 0) {
             drawDiscard();
         } else {
@@ -305,17 +308,17 @@ $(document).ready(function() {
         }
     });
 
-    socket.on('displayTrumpSuit', drawTrumpSuitText);
-    socket.on('updateUserStatusMessage', updateUserStatusText);
-    socket.on('drawAttacking', drawAttacking);
-    socket.on('eraseAttacking', eraseAttacking);
-    socket.on('drawDefending', drawDefending);
-    socket.on('eraseDefending', eraseDefending);
-    socket.on('drawAdding', drawAdding);
-    socket.on('eraseAdding', eraseAdding);
-    socket.on('updateHandCounts', updateCardsInHand);
+    socket.on(DISPLAY_TRUMP_SUIT_EVENT, drawTrumpSuitText);
+    socket.on(UPDATE_USER_STATUS_MESSAGE_EVENT, updateUserStatusText);
+    socket.on(DRAW_ATTACKING_EVENT, drawAttacking);
+    socket.on(ERASE_ATTACKING_EVENT, eraseAttacking);
+    socket.on(DRAW_DEFENDING_EVENT, drawDefending);
+    socket.on(ERASE_DEFENDING_EVENT, eraseDefending);
+    socket.on(DRAW_ADDING_EVENT, drawAdding);
+    socket.on(ERASE_ADDING_EVENT, eraseAdding);
+    socket.on(UPDATE_HAND_COUNTS_EVENT, updateCardsInHand);
 
-    socket.on('onAttack', function(maxCards) {
+    socket.on(ON_ATTACK_EVENT, function(maxCards) {
         setGameBoardState(ON_ATTACK_STATE);
         hideAllGamePlayButtons();
         setAttackButtonVisibility(true);
@@ -324,28 +327,20 @@ $(document).ready(function() {
         closeDefenseSquares([0, 1, 2, 3, 4, 5]);
         maxCardsToAddThisTurn = maxCards;
         attackOpenSquare = 0;
-        cardsOnTableUI.clear();
-        digitsOnTable.clear();
+        clearCardsOnTableVariables();
         cardSelected = '';
-        cardsOnAttackSide = [];
-        cardsOnDefenseSide = [];
-        cardAdded = false;
+        cardsAddedThisTurn = [];
     });
 
-    socket.on('onDefense', function(attackCards, defenseCards, totalCardsOnAttackForSlide) {
+    socket.on(ON_DEFENSE_EVENT, function(attackCards, defenseCards, slideToHandSize) {
         setGameBoardState(ON_DEFENSE_STATE);
-        console.log(getGameBoardState());
         hideAllGamePlayButtons();
         setPickupButtonVisibility(true);
         requiredCardsToAddThisTurn = attackCards.length;
-        let allCards = attackCards.concat(defenseCards);
-        cardsOnTableUI = new Set(allCards);
-        digitsOnTable.clear();
-        for (let i = 0; i < allCards.length; i++) {
-            digitsOnTable.add(getCardDigit(allCards[i]));
-        }
+        populateCardsOnTableVariables(attackCards, defenseCards);
         cardSelected = '';
-        canSlide = attackCards.length !== 4;
+        maxCardsToAddThisTurn = Math.min(slideToHandSize, CARDS_PER_DIGIT) - attackCards.length;
+        canSlide = (maxCardsToAddThisTurn > 0);
         if (canSlide) {
             attackOpenSquare = attackCards.length;
             openAttackSquares([attackOpenSquare]);
@@ -354,59 +349,76 @@ $(document).ready(function() {
         defenseOpenSquare = 0;
         openDefenseSquares([defenseOpenSquare]);
         displayCardsOnTable(attackCards, defenseCards);
+        cardsAddedThisTurn = [];
     });
 
-    socket.on('disableGameBoard', function() {
-        console.log('disabled state');
+    socket.on(ADDING_EVENT, function(attackCards, defenseCards, maxCards) {
+        setGameBoardState(ADDING_STATE);
+        hideAllGamePlayButtons();
+        setDoneButtonVisibility(true);
+        maxCardsToAddThisTurn = maxCards;
+        populateCardsOnTableVariables(attackCards, defenseCards);
+        cardSelected = '';
+        attackOpenSquare = attackCards.length;
+        displayCardsOnTable(attackCards, defenseCards);
+        openAttackSquares([attackOpenSquare]);
+        cardsAddedThisTurn = [];
+    });
+
+    socket.on(DISABLE_GAME_BOARD_EVENT, function() {
         setGameBoardState(DISABLED_STATE);
-        console.log(getGameBoardState());
         hideAllGamePlayButtons();
     });
 
-    socket.on('displayCardsOnTable', displayCardsOnTable);
+    socket.on(DISPLAY_CARDS_ON_TABLE_EVENT, displayCardsOnTable);
 
-    socket.on('gameOver', function(message) {
+    socket.on(GAME_OVER_EVENT, function(message) {
        $('#gameOverText').text = message;
        gameOverView();
     });
 
-    $('#newGameButton').on('click', function() {
+    $('#newGameButton').on(CLICK_EVENT, function() {
         let numPlayers = $('#numPlayers input:radio:checked').val();
-        socket.emit('newGame', numPlayers);
+        socket.emit(NEW_GAME_EVENT, numPlayers);
     });
 
-    $('#leaveGameButton').on('click', function() {
-        console.log('leaving lobby game ' + joinedGameID);
-        socket.emit('leaveLobbyGame', joinedGameID);
+    $('#leaveGameButton').on(CLICK_EVENT, function() {
+        socket.emit(LEAVE_LOBBY_GAME_EVENT, joinedGameID);
     });
 
-    $('#cancelGameButton').on('click', function() {
-        console.log("cancelling lobby game " + joinedGameID);
-        socket.emit('cancelLobbyGame', joinedGameID);
+    $('#cancelGameButton').on(CLICK_EVENT, function() {
+        socket.emit(CANCEL_LOBBY_GAME_EVENT, joinedGameID);
     });
 
-    $('#returnToLobbyButton').on('click', returnToLobby);
+    $('#returnToLobbyButton').on(CLICK_EVENT, returnToLobby);
 
-    $('#attackButton').on('click', function() {
+    $('#attackButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_ATTACK_STATE) {
-            if (cardAdded) {
+            if (cardsAddedThisTurn.length > 0) {
                 console.log('sending gameResponse');
-                socket.emit('gameResponse', joinedGameID, 'onAttackResponse', cardsOnAttackSide, cardsOnDefenseSide);
+                socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'onAttackResponse', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
             }
         }
     });
 
-    $('#pickupButton').on('click', function() {
+    $('#pickupButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_DEFENSE_STATE) {
             console.log('sending pickup gameResponse');
-            socket.emit('gameResponse', joinedGameID, 'pickup', cardsOnAttackSide, cardsOnDefenseSide);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'pickup', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 
-    $('#slideButton').on('click', function() {
+    $('#slideButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_DEFENSE_STATE) {
             console.log('sending slide gameResponse');
-            socket.emit('gameResponse', joinedGameID, 'slide', cardsOnAttackSide, cardsOnDefenseSide);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'slide', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+        }
+    });
+
+    $('#doneButton').on(CLICK_EVENT, function() {
+        if (getGameBoardState() === ADDING_STATE) {
+            console.log('sending adding - done response');
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'doneAdding', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 });

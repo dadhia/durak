@@ -9,6 +9,7 @@ var gameBoardState;
 const DISABLED_STATE = 'DISABLED';
 const ON_ATTACK_STATE = 'ON_ATTACK';
 const ON_DEFENSE_STATE = 'ON_DEFENSE';
+const ADDING_STATE = 'ADDING';
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
@@ -50,8 +51,8 @@ function generateBackgroundGraphics() {
     var messageBackground = generateRect(generateLocation(0, 500), 'black', 400, 200, String('background'));
     var table = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
     for (let i = 0; i < 6; i++) {
-        attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, 'attack' + i);
-        defenseSquares[i] = generateRect(defenseSquareLocations[i], '#4C814C', 40, 56, 'defense' + i);
+        attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, getAttackSquareName(i));
+        defenseSquares[i] = generateRect(defenseSquareLocations[i], '#4C814C', 40, 56, getDefenseSquareName(i));
     }
     var attackText = generateTextObject('Attack', generateLocation(680, 120), 20, '#A40B0B');
     var defenseText = generateTextObject('Defense', generateLocation(680, 300), 20, '#A40B0B');
@@ -75,8 +76,12 @@ function updateUserStatusText(text) {
     canvas.add(userStatusText);
 }
 
-function clearUserStatusText() {
-    userStatusText.text = '';
+function getAttackSquareName(squareIndex) {
+    return 'attack' + squareIndex
+}
+
+function getDefenseSquareName(squareIndex) {
+    return 'defense' + squareIndex
 }
 
 function generateUsernameTexts(numPlayers, names) {

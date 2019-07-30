@@ -25,7 +25,7 @@ class InProgressGame:
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
         self.__initialize_game()
-        self.transition_state(None, None, None)
+        self.transition_state(None, None, None, None)
 
     def __acquire_session_ids(self):
         self.session_ids = []
@@ -139,7 +139,8 @@ class InProgressGame:
         for player_index in range(self.game.num_players):
             if player_index is not special_index:
                 emit(events.DISABLE_GAME_BOARD, room=self.session_ids[player_index])
-                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards), room=self.session_ids)
+                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards),
+                     room=self.session_ids[player_index])
 
     def __enable_attack_ui(self):
         max_cards = min(len(self.hands[self.defense_index]), 4)
@@ -153,29 +154,29 @@ class InProgressGame:
         self.__disable_boards(self.defense_index)
 
     def __enable_adding_ui(self):
-        max_cards = game_constants.MAX_CARDS_PER_ATTACK - len(self.attack_cards)
-        max_cards = min(len(self.hands[self.defense_index]), max_cards)
-        emit(events.ADDING, (self.attack_cards, self.defense_cards, max_cards),
-             room=self.session_ids[self.adding_index])
+        max_total_cards = min(game_constants.MAX_CARDS_PER_ATTACK, len(self.hands[self.defense_index]))
+        max_cards = max_total_cards - len(self.attack_cards)
+        emit(events.ADDING, (self.attack_cards, self.defense_cards, max_cards), room=self.session_ids[self.adding_index])
         self.__disable_boards(self.adding_index)
 
     def __get_screen_name(self, player_index):
         return self.player_info[player_index].screen_name
 
-    def transition_state(self, response, attack_cards, defense_cards):
+    def __update_cards_on_table(self, attack_cards, defense_cards, cards_added_this_turn, current_turn_index):
+        self.attack_cards = attack_cards
+        self.defense_cards = defense_cards
+        for card in cards_added_this_turn:
+            self.__remove_card_from_hand(current_turn_index, card)
+
+    def transition_state(self, response, attack_cards, defense_cards, cards_added_this_turn):
+        """ Performs state transitions to control game play. """
         if self.game_state is GameStates.INIT:
             self.__init_to_attack_transition()
         elif self.game_state is GameStates.ON_ATTACK and response == 'onAttackResponse':
-            self.attack_cards = attack_cards
-            self.defense_cards = defense_cards
-            for card in attack_cards:
-                self.__remove_card_from_deck(self.attack_index, card)
+            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.attack_index)
             self.__attack_to_defend_transition()
         elif self.game_state is GameStates.ON_DEFENSE and response == 'pickup':
-            self.attack_cards = attack_cards
-            self.defense_cards = defense_cards
-            for card in defense_cards:
-                self.__remove_card_from_deck(self.defense_index, card)
+            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.defense_index)
             self.__on_defense_to_pickup_transition()
         self.__update_game()
 
@@ -185,8 +186,6 @@ class InProgressGame:
         self.adding_index = self.attack_index
         self.__set_defense_index()
         self.game_state = GameStates.ON_ATTACK
-        self.__draw_attacking_label()
-        self.__draw_defending_label()
 
     def __attack_to_defend_transition(self):
         """ Takes the game from ON_ATTACK to ON_DEFENSE -- the first opportunity to defend. """
@@ -194,30 +193,42 @@ class InProgressGame:
         self.__set_slide_index()
 
     def __on_defense_to_pickup_transition(self):
+        """ Takes the game from ON_DEFENSE to either ADDING or next appropriate state. """
         max_pairings = len(self.hands[self.defense_index])
         attack_cards_added = len(self.attack_cards)
         if (max_pairings == attack_cards_added) or (attack_cards_added == game_constants.MAX_CARDS_PER_ATTACK):
             for card in self.defense_cards + self.attack_cards:
                 self.__add_card_to_deck(self.defense_index, card)
             self.__draw_cards_to_smaller_hands()
+            self.__determine_winners_and_losers()
         else:
             self.__move_adding_index(True)
             self.game_state = GameStates.ADDING
 
     def __update_game(self):
+        """ Handles all UI events based on the current game state. """
         if self.game_state is GameStates.ON_ATTACK:
             self.__display_cards_remaining()
             self.__display_cards_discarded()
             self.__sort_and_display_updated_hands()
             self.__send_on_attack_message()
+            self.__draw_attacking_label()
+            self.__draw_defending_label()
+            self.__erase_adding_label()
             self.__enable_attack_ui()
         elif self.game_state is GameStates.ON_DEFENSE:
             self.__sort_and_display_updated_hands()
             self.__send_on_defense_message()
+            self.__draw_attacking_label()
+            self.__draw_defending_label()
+            self.__erase_adding_label()
             self.__enable_defense_ui()
         elif self.game_state is GameStates.ADDING:
             self.__sort_and_display_updated_hands()
             self.__send_adding_message()
+            self.__erase_attacking_label()
+            self.__draw_defending_label()
+            self.__draw_adding_label()
             self.__enable_adding_ui()
 
     def __construct_on_attack_message(self):
@@ -260,7 +271,10 @@ class InProgressGame:
     def __draw_adding_label(self):
         emit(events.DRAW_ADDING, (self.game.num_players, self.adding_index), room=self.room_name)
 
-    def __remove_card_from_deck(self, player_index, card):
+    def __erase_adding_label(self):
+        emit(events.ERASE_ADDING, room=self.room_name)
+
+    def __remove_card_from_hand(self, player_index, card):
         self.hands[player_index].remove(card)
 
     def __add_card_to_deck(self, player_index, card):
@@ -277,9 +291,9 @@ class InProgressGame:
                 self.__set_drawing_index(False)
 
     def __determine_winners_and_losers(self):
-        just_finished = set()
-        still_remaining = -1
         if self.deck.no_cards_remaining():
+            just_finished = set()
+            still_remaining = -1
             for player_index in range(self.game.num_players):
                 if (not self.still_playing[player_index]) and (len(self.hands[player_index]) == 0):
                     self.still_playing[player_index] = False
