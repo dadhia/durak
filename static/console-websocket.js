@@ -11,7 +11,6 @@ let attackOpenSquare, defenseOpenSquare;
 let canSlide, canDefend;
 const CARDS_PER_DIGIT = 4;
 const CLICK_EVENT = 'click';
-let maxCardsToSlide;
 let cardsAddedThisTurn;
 
 function joinedGameView() {
@@ -92,8 +91,12 @@ function isValidDefense(attackCard, defenseCard) {
         || ( (getCardSuit(defenseCard) === trumpSuit) && (getCardSuit(attackCard) !== trumpSuit)) );
 }
 
-function canAddCard() {
+function canAddCardOnAttackSide() {
     return maxCardsToAddThisTurn > cardsAddedThisTurn.length;
+}
+
+function canAddCardOnDefenseSide() {
+    return requiredCardsToAddThisTurn > cardsAddedThisTurn.length;
 }
 
 function openNextAttackSquare() {
@@ -124,7 +127,7 @@ function addCardToDefense() {
 }
 
 function placeCardDuringAttackState(square) {
-    if ((square === getAttackSquareName(attackOpenSquare) && canAddCard())) {
+    if ((square === getAttackSquareName(attackOpenSquare) && canAddCardOnAttackSide())) {
         addCardToAttack();
         if (maxCardsToAddThisTurn > cardsAddedThisTurn.length) {
             openNextAttackSquare();
@@ -133,24 +136,30 @@ function placeCardDuringAttackState(square) {
 }
 
 function placeCardDuringOnDefenseState(square) {
-    if ((square === getAttackSquareName(attackOpenSquare)) && canSlide && digitsOnTable.has(getCardDigit(cardSelected)) && canAddCard()) {
+    if ((square === getAttackSquareName(attackOpenSquare))
+        && canSlide
+        && digitsOnTable.has(getCardDigit(cardSelected))
+        && canAddCardOnAttackSide())
+    {
         addCardToAttack();
         canDefend = false;
         setSlideButtonVisibility(true);
-        if (maxCardsToAddThisTurn > cardsAddedThisTurn.length) {
+        if (canAddCardOnAttackSide()) {
             openNextAttackSquare();
         }
         closeDefenseSquares([defenseOpenSquare]);
-    } else if ((square === getDefenseSquareName(defenseOpenSquare)) && canDefend) {
+    } else if ((square === getDefenseSquareName(defenseOpenSquare))
+        && canDefend
+        && canAddCardOnDefenseSide())
+    {
         let attackCard = cardsOnAttackSide[defenseOpenSquare];
         if (isValidDefense(attackCard, cardSelected)) {
             canSlide = false;
             addCardToDefense();
-            requiredCardsToAddThisTurn--;
-            if (requiredCardsToAddThisTurn === 0) {
-                setDefenseButtonVisibility(true);
-            } else {
+            if (canAddCardOnDefenseSide()) {
                 openNextDefenseSquare();
+            } else {
+                setDefenseButtonVisibility(true);
             }
         }
     }
@@ -317,6 +326,7 @@ $(document).ready(function() {
     socket.on(DRAW_ADDING_EVENT, drawAdding);
     socket.on(ERASE_ADDING_EVENT, eraseAdding);
     socket.on(UPDATE_HAND_COUNTS_EVENT, updateCardsInHand);
+    socket.on(DISPLAY_CARDS_ON_TABLE_EVENT, displayCardsOnTable);
 
     socket.on(ON_ATTACK_EVENT, function(maxCards) {
         setGameBoardState(ON_ATTACK_STATE);
@@ -370,8 +380,6 @@ $(document).ready(function() {
         hideAllGamePlayButtons();
     });
 
-    socket.on(DISPLAY_CARDS_ON_TABLE_EVENT, displayCardsOnTable);
-
     socket.on(GAME_OVER_EVENT, function(message) {
        $('#gameOverText').text = message;
        gameOverView();
@@ -396,7 +404,7 @@ $(document).ready(function() {
         if (getGameBoardState() === ON_ATTACK_STATE) {
             if (cardsAddedThisTurn.length > 0) {
                 console.log('sending gameResponse');
-                socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'onAttackResponse', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+                socket.emit(GAME_RESPONSE_EVENT, joinedGameID, ON_ATTACK_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
             }
         }
     });
@@ -404,21 +412,28 @@ $(document).ready(function() {
     $('#pickupButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_DEFENSE_STATE) {
             console.log('sending pickup gameResponse');
-            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'pickup', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, PICKUP_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 
     $('#slideButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_DEFENSE_STATE) {
             console.log('sending slide gameResponse');
-            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'slide', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, SLIDE_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 
     $('#doneButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ADDING_STATE) {
             console.log('sending adding - done response');
-            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, 'doneAdding', cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DONE_ADDING_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
+
+    $('#defenseButton').on(CLICK_EVENT, function() {
+        if (getGameBoardState() === ON_DEFENSE_STATE) {
+            console.log('sending defense response');
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DEFEND_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+        }
+    })
 });

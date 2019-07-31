@@ -7,6 +7,7 @@ from constants import NUM_PLAYERS_TO_LOWEST_CARD, CARD_VALUE_STRINGS_TO_INT, SUI
 from game.game_states import GameStates
 import game.constants as game_constants
 import constants
+import game.game_responses as responses
 
 
 class InProgressGame:
@@ -79,10 +80,10 @@ class InProgressGame:
         if initial:
             self.adding_index = self.attack_index
         else:
-            self.adding_index = (self.adding_index + 1) % self.game.num_players
+            self.adding_index = (self.adding_index - 1) % self.game.num_players
         while (len(self.hands[self.adding_index]) is 0) or (self.still_playing[self.adding_index] is False) \
                 or (self.adding_index == self.defense_index):
-            self.adding_index = (self.adding_index + 1) % self.game.num_players
+            self.adding_index = (self.adding_index - 1) % self.game.num_players
 
     def __sort_and_display_updated_hands(self):
         hand_counts = []
@@ -163,6 +164,10 @@ class InProgressGame:
         return self.player_info[player_index].screen_name
 
     def __update_cards_on_table(self, attack_cards, defense_cards, cards_added_this_turn, current_turn_index):
+        """
+        Updates server-side variables which track the attack and defense cards on the table. Additionally, removes all
+        card_added_this_turn from the hand of player with index current_turn_index.
+        """
         self.attack_cards = attack_cards
         self.defense_cards = defense_cards
         for card in cards_added_this_turn:
@@ -172,12 +177,23 @@ class InProgressGame:
         """ Performs state transitions to control game play. """
         if self.game_state is GameStates.INIT:
             self.__init_to_attack_transition()
-        elif self.game_state is GameStates.ON_ATTACK and response == 'onAttackResponse':
+        elif self.game_state is GameStates.ON_ATTACK and response == responses.ON_ATTACK_RESPONSE:
             self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.attack_index)
             self.__attack_to_defend_transition()
-        elif self.game_state is GameStates.ON_DEFENSE and response == 'pickup':
+        elif self.game_state is GameStates.ON_DEFENSE and response == responses.PICKUP_RESPONSE:
             self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.defense_index)
             self.__on_defense_to_pickup_transition()
+        elif self.game_state is GameStates.ON_DEFENSE and response == responses.SLIDE_RESPONSE:
+            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
+            pass
+            # TODO
+        elif self.game_state is GameStates.ON_DEFENSE and response == responses.DEFEND_RESPONSE:
+            pass
+            # TODO
+        elif self.game_state is GameStates.ADDING_PICKUP and response == responses.DONE_ADDING_RESPONSE:
+            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
+            pass
+            # TODO
         self.__update_game()
 
     def __init_to_attack_transition(self):
@@ -203,7 +219,10 @@ class InProgressGame:
             self.__determine_winners_and_losers()
         else:
             self.__move_adding_index(True)
-            self.game_state = GameStates.ADDING
+            self.game_state = GameStates.ADDING_PICKUP
+            if self.adding_index is self.defense_index:
+                pass
+                # TODO
 
     def __update_game(self):
         """ Handles all UI events based on the current game state. """
@@ -223,7 +242,7 @@ class InProgressGame:
             self.__draw_defending_label()
             self.__erase_adding_label()
             self.__enable_defense_ui()
-        elif self.game_state is GameStates.ADDING:
+        elif self.game_state is GameStates.ADDING_PICKUP:
             self.__sort_and_display_updated_hands()
             self.__send_adding_message()
             self.__erase_attacking_label()

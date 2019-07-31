@@ -1,0 +1,5 @@
+ON_ATTACK_RESPONSE = 'onAttackResponse'
+PICKUP_RESPONSE = 'pickup'
+SLIDE_RESPONSE = 'slide'
+DEFEND_RESPONSE = 'defend'
+DONE_ADDING_RESPONSE = 'doneAdding'
