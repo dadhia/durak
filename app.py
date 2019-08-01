@@ -28,10 +28,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 from models.user import User
-
+from database import db_operations
 db.create_all()
 
-from database import db_operations
 from game import game_management
 
 lobby_games = {}
@@ -51,7 +50,11 @@ def index():
 def register():
     """ Handles a registration request from a client and verifies that all necessary information is provided. """
     form = RegistrationForm()
+    print(form.Email.data)
+    print(form.Password.data)
+    print(form.ScreenName.data)
     if form.validate_on_submit():
+        print('validated')
         password_hash = pbkdf2_sha256.hash(form.Password.data)
         try:
             new_user = User(email=form.Email.data, password=password_hash, screen_name=form.ScreenName.data)
@@ -60,6 +63,7 @@ def register():
             login_user(new_user)
             return redirect(url_for('console'))
         except IntegrityError:
+            print('integrity error')
             return render_template('index-with-errors.html',
                                    error_message=DUPLICATE_EMAIL,
                                    login_form=LoginForm(),

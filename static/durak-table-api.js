@@ -52,7 +52,8 @@ for (let i = 0; i < 6; i++) {
     defenseSquareLocations[i] = generateLocation(leftCoordinate, 240);
 }
 
-var cardsDrawnInHand = [];
+var cardsDrawnInHand = new Set();
+var cardsDrawnOnTable = new Set();
 
 var objectToCard = {};
 var objectToSquare = {};
@@ -225,6 +226,7 @@ function updateCardsRemaining(numCards) {
     if (numCards > 1) {
         drawDeck();
     } else {
+        console.log('erasing deck...');
         eraseDeck();
     }
 }
@@ -312,14 +314,30 @@ function drawCardInHand(card, position) {
     }
     const location = generateLocation(left, top);
     drawCard(card, location);
-    cardsDrawnInHand.push(cards[card]);
+    cardsDrawnInHand.add(cards[card]);
+}
+
+function drawCardOnTable(card, side, square) {
+    if (side === 'attack') {
+        drawCard(card, attackSquareLocations[square]);
+    } else if (side === 'defense') {
+        drawCard(card, defenseSquareLocations[square]);
+    }
+    cardsDrawnOnTable.add(cards[card]);
+}
+
+function eraseCardsOnTable() {
+    for (let card of cardsDrawnOnTable) {
+        canvas.remove(card);
+    }
+    cardsDrawnOnTable.clear();
 }
 
 function eraseCardsInHand() {
-    for (let i = 0; i < cardsDrawnInHand.length; i++) {
-        let card = cardsDrawnInHand.pop();
-        eraseCard(card.id);
+    for (let card of cardsDrawnInHand) {
+        canvas.remove(card);
     }
+    cardsDrawnInHand.clear();
 }
 
 function makeCardUnselectable(card) {
@@ -394,26 +412,6 @@ function setPickupButtonVisibility(visible) {
     }
 }
 
-function setAttackButtonOpacity(opacity) {
-    $('#attackButton').fadeTo('fast', opacity);
-}
-
-function setDefenseButtonOpacity(opacity) {
-    $('#defenseButton').fadeTo('fast', opacity);
-}
-
-function setDoneButtonOpacity(opacity) {
-    $('#doneButton').fadeTo('fast', opacity);
-}
-
-function setSlideButtonOpacity(opacity) {
-    $('#slideButton').fadeTo('fast', opacity);
-}
-
-function setPickupButtonVisibility(opacity) {
-    $('#pickupButton').fadeTo('fast', opacity);
-}
-
 function setGameBoardState(newGameBoardState) {
     gameBoardState = newGameBoardState;
 }
@@ -437,7 +435,7 @@ function getCardSuit(card) {
 function updateCardsInHand(cardsPerHand) {
     for (let i = 0; i < cardsPerHand.length; i++) {
         if (cardsPerHand[i] > 0) {
-            individualCardsRemainingTexts[i].text = 'Cards in Hand: ' + cardsPerHand[i];
+            individualCardsRemainingTexts[i].text = `Cards in Hand: ${cardsPerHand[i]}`;
         } else {
             individualCardsRemainingTexts[i].text = 'Cards in Hand: 0 (Done)';
         }

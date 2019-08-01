@@ -90,4 +90,4 @@ def insert_loss(user_id, game_id):
 
 if __name__ == '__main__':
     """ Simply used for debugging purposes.  Will be deleted for final release. """
-    players = get_game_user_has_joined(1)
+    insert_loss(2, 1)

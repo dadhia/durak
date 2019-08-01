@@ -104,7 +104,7 @@ function openNextDefenseSquare() {
 }
 
 function addCardToAttack() {
-    drawCard(cardSelected, attackSquareLocations[attackOpenSquare]);
+    drawCardOnTable(cardSelected, 'attack', attackOpenSquare);
     cardsOnAttackSide.push(cardSelected);
     digitsOnTable.add(getCardDigit(cardSelected));
     cardsOnTableUI.add(cardSelected);
@@ -113,7 +113,7 @@ function addCardToAttack() {
 }
 
 function addCardToDefense() {
-    drawCard(cardSelected, defenseSquareLocations[defenseOpenSquare]);
+    drawCardOnTable(cardSelected, 'defense', defenseOpenSquare);
     cardsOnDefenseSide.push(cardSelected);
     digitsOnTable.add(getCardDigit(cardSelected));
     cardsOnTableUI.add(cardSelected);
@@ -207,14 +207,14 @@ function hideAllGamePlayButtons() {
 function displayCardsOnTable(attackCards, defenseCards) {
     for (let i = 0; i < attackCards.length; i++) {
         openAttackSquares([i]);
-        drawCard(attackCards[i], attackSquareLocations[i]);
+        drawCardOnTable(attackCards[i], 'attack', i);
     }
     for (let i = attackCards.length; i < 6; i++) {
         closeAttackSquares([i]);
     }
     for (let i = 0; i < defenseCards.length; i++) {
         openDefenseSquares([i]);
-        drawCard(defenseCards[i], defenseSquareLocations[i]);
+        drawCardOnTable(defenseCards[i], 'defense', i);
     }
     for (let i = defenseCards.length; i < 6; i++) {
         closeDefenseSquares([i]);
@@ -267,12 +267,8 @@ $(document).ready(function() {
     }
 
     function eraseAllCardsOnTable() {
-        for (let card of cardsOnTableUI) {
-            console.log('erasing ' + card);
-            eraseCard(card);
-        }
+        eraseCardsOnTable();
         eraseCardsInHand();
-        console.log('---------------done erasing--------------------');
         socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DONE_ERASING_RESPONSE, [], [], []);
     }
 
