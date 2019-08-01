@@ -56,11 +56,11 @@ var cardsDrawnInHand = new Set();
 var cardsDrawnOnTable = new Set();
 
 var objectToCard = {};
-var objectToSquare = {};
 
 var attackSquares = new Array(6);
 var defenseSquares = new Array(6);
 var individualCardsRemainingTexts;
+let deckFlag = false;
 
 function generateBackgroundGraphics() {
     generatePlayersStatusTexts();
@@ -223,11 +223,13 @@ function drawStatusText() {
 
 function updateCardsRemaining(numCards) {
     cardsRemainingText.text = `Cards Remaining: ${numCards}`;
-    if (numCards > 1) {
+    if ((numCards >= 2) && !deckFlag) {
+        deckFlag = true;
         drawDeck();
-    } else {
-        console.log('erasing deck...');
+    } else if (numCards === 1) {
         eraseDeck();
+    } else if (numCards === 0) {
+        eraseTrumpCard();
     }
 }
 

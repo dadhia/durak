@@ -243,7 +243,6 @@ function clearCardsOnTableVariables() {
 function displayCardsRemaining(numCards) {
     updateCardsRemaining(numCards);
     if (numCards === 0) {
-        eraseTrumpCard();
         trumpCard = '';
     }
 }
@@ -410,7 +409,7 @@ $(document).ready(function() {
     });
 
     socket.on(GAME_OVER_EVENT, function(message) {
-       $('#gameOverText').text = message;
+       $('#gameOverText').text(message);
        gameOverView();
     });
 
