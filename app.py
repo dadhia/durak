@@ -39,12 +39,6 @@ started_games = {}
 in_progress_games = {}
 
 
-@app.route('/game/', methods=['GET'])
-def get_game():
-    """ Renders the console-game.html page for testing purposes.  This method will be removed eventually. """
-    return render_template('console-game.html', email='THIS IS A TEST ENVIRONMENT')
-
-
 @app.route('/', methods=['GET'])
 def index():
     """ Renders the home page. """
