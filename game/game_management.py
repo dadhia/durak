@@ -88,9 +88,7 @@ class InProgressGame:
     def __sort_and_display_updated_hands(self):
         hand_counts = []
         for i in range(self.game.num_players):
-            print(self.hands[i])
             list.sort(self.hands[i], key=self.__hand_sorter)
-            print(self.hands[i])
             emit(events.DISPLAY_HAND, self.hands[i], room=self.session_ids[i])
             hand_counts.append(len(self.hands[i]))
         emit(events.UPDATE_HAND_COUNTS, hand_counts, room=self.room_name)
@@ -173,6 +171,15 @@ class InProgressGame:
         for card in cards_added_this_turn:
             self.__remove_card_from_hand(current_turn_index, card)
 
+    def __move_all_cards_on_table_to_hand(self, player_index):
+        """ Moves all attack and defense cards to the hand of player with index == player_index."""
+        for card in self.attack_cards + self.defense_cards:
+            self.__add_card_to_hand(card, player_index)
+
+    def __end_turn_adding_pickup(self):
+        self.__move_all_cards_on_table_to_hand(self.defense_index)
+        self.game_state = GameStates.TURN_OVER_PICKUP
+
     def transition_state(self, response, attack_cards, defense_cards, cards_added_this_turn):
         """ Performs state transitions to control game play. """
         if self.game_state is GameStates.INIT:
@@ -192,8 +199,12 @@ class InProgressGame:
             # TODO
         elif self.game_state is GameStates.ADDING_PICKUP and response == responses.DONE_ADDING_RESPONSE:
             self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
-            pass
+            self.__adding_pickup_transition()
+
+        if self.game_state is GameStates.TURN_OVER_PICKUP:
             # TODO
+            pass
+
         self.__update_game()
 
     def __init_to_attack_transition(self):
@@ -219,10 +230,24 @@ class InProgressGame:
             self.__determine_winners_and_losers()
         else:
             self.__move_adding_index(True)
-            self.game_state = GameStates.ADDING_PICKUP
-            if self.adding_index is self.defense_index:
-                pass
-                # TODO
+            if self.adding_index is self.defense_index:  # no add possible
+                self.__end_turn_adding_pickup()
+            else:
+                self.game_state = GameStates.ADDING_PICKUP
+
+    def __adding_pickup_transition(self):
+        """ Performs necessary transitions at the end of an adding - 'doneAdding'. """
+        if len(self.attack_cards) is game_constants.MAX_CARDS_PER_ATTACK:
+            self.__end_turn_adding_pickup()
+        else:
+            cards_in_defender_hand = len(self.hands[self.defense_index])
+            extra_attack_cards = len(self.attack_cards) - len(self.defense_cards)
+            if extra_attack_cards == cards_in_defender_hand:
+                self.__end_turn_adding_pickup()
+            else:
+                self.__move_adding_index(False)
+                if self.adding_index is self.defense_index:
+                    self.__end_turn_adding_pickup()
 
     def __update_game(self):
         """ Handles all UI events based on the current game state. """
@@ -355,6 +380,9 @@ class InProgressGame:
     def __add_loss(self, player_index):
         user_id = self.player_info[player_index].id
         db_operations.insert_loss(user_id, self.game.id)
+
+    def __add_card_to_hand(self, card, player_index):
+        self.hands[player_index].append(card)
 
 
 class DurakDeck:

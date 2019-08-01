@@ -205,11 +205,16 @@ function drawStatusText() {
 }
 
 function updateCardsRemaining(numCards) {
-    cardsRemainingText.text = 'Cards Remaining: ' + numCards;
+    cardsRemainingText.text = `Cards Remaining: ${numCards}`;
+    if (numCards > 1) {
+        drawDeck();
+    } else {
+        eraseDeck();
+    }
 }
 
 function generateCardObject(id) {
-    var image = document.getElementById('card-' + id);
+    var image = document.getElementById(`card-${id}`);
     var cardCanvasObject = new fabric.Image(image, {selectable: false, id:id});
     cardCanvasObject.scale(0.3);
     return cardCanvasObject;
@@ -254,16 +259,18 @@ function drawDeck() {
     drawCard('deck', deckLocation);
 }
 
-function drawDiscard() {
-    drawCard('discard', discardLocation);
+function updateCardsDiscarded(numCards) {
+    console.log( `Cards Discarded: ${numCards}`);
+    cardsDiscardedText.text = `Cards Discarded: ${numCards}`;
+    if (numCards > 0) {
+        drawCard('discard', discardLocation);
+    } else {
+        eraseCard('discard');
+    }
 }
 
 function eraseDeck() {
     eraseCard('deck');
-}
-
-function eraseDiscard() {
-    eraseCard('discard');
 }
 
 function eraseTrumpCard() {

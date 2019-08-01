@@ -55,16 +55,6 @@ function updateWaitingMessage(numPlayers, playersJoined, gameID) {
     $('#logoutWarning').text("If you logout, you will cancel or leave this game!");
 }
 
-function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID, socket) {
-    let buttonID = `joinGame${gameID}`;
-    let nextRow = `<tr id='${gameID}'><td>${email}</td><td>${numPlayers}</td><td>${spotsRemaining}</td>` +
-            `<td><button type="button" class="btn btn-primary" id="${buttonID}">Join</button></td>`;
-    $('#openGamesTable').append(nextRow);
-    $('#' + buttonID).on(CLICK_EVENT, function() {
-        socket.emit('joinLobbyGame', gameID);
-    });
-}
-
 function cardInHand(card) {
     return (card !== 'discard') && (card !== 'deck') && (card !== trumpCard) && !cardsOnTableUI.has(card);
 }
@@ -112,15 +102,16 @@ function openNextDefenseSquare() {
 function addCardToAttack() {
     drawCard(cardSelected, attackSquareLocations[attackOpenSquare]);
     cardsOnAttackSide.push(cardSelected);
-    digitsOnTable.add(cardSelected);
-    cardsOnTableUI(cardSelected);
+    digitsOnTable.add(getCardDigit(cardSelected));
+    cardsOnTableUI.add(cardSelected);
     cardsAddedThisTurn.push(cardSelected);
     cardSelected = '';
 }
 
 function addCardToDefense() {
     drawCard(cardSelected, defenseSquareLocations[defenseOpenSquare]);
-    cardsOnDefenseSide.add(getCardDigit(cardSelected));
+    cardsOnDefenseSide.push(cardSelected);
+    digitsOnTable.add(getCardDigit(cardSelected));
     cardsOnTableUI.add(cardSelected);
     cardsAddedThisTurn.push(cardSelected);
     cardSelected = '';
@@ -194,18 +185,22 @@ function hideAllGamePlayButtons() {
 }
 
 function displayCardsOnTable(attackCards, defenseCards) {
+    console.log(attackCards.length);
+    console.log(defenseCards.length);
     for (let i = 0; i < attackCards.length; i++) {
         openAttackSquares([i]);
         drawCard(attackCards[i], attackSquareLocations[i]);
     }
     for (let i = attackCards.length; i < 6; i++) {
+        console.log('closing attack square ' + i);
         closeAttackSquares([i]);
     }
     for (let i = 0; i < defenseCards.length; i++) {
         openDefenseSquares([i]);
         drawCard(defenseCards[i], defenseSquareLocations[i]);
     }
-    for (let i = attackCards.length; i < 6; i++) {
+    for (let i = defenseCards.length; i < 6; i++) {
+        console.log('closing defense square ' + i);
         closeDefenseSquares([i]);
     }
 }
@@ -228,13 +223,33 @@ function clearCardsOnTableVariables() {
     digitsOnTable.clear();
 }
 
+function displayCardsRemaining(numCards) {
+    updateCardsRemaining(numCards);
+    if (numCards === 0) {
+        eraseTrumpCard();
+        trumpCard = '';
+    }
+}
+
 $(document).ready(function() {
-    let socket = io.connect('http://127.0.0.1:5000');
+    var socket = io.connect('http://127.0.0.1:5000');
 
     socket.on(CONNECT_EVENT, function() {
         lobbyView();
+        console.log(typeof socket);
         socket.emit(REQUEST_ALL_LOBBY_GAMES_EVENT);
     });
+
+    function addSingleLobbyGame(email, numPlayers, spotsRemaining, gameID) {
+        let buttonID = `joinGame${gameID}`;
+        let nextRow = `<tr id='${gameID}'><td>${email}</td><td>${numPlayers}</td><td>${spotsRemaining}</td>` +
+                `<td><button type="button" class="btn btn-primary" id="${buttonID}">Join</button></td>`;
+        $('#openGamesTable').append(nextRow);
+        $('#' + buttonID).on(CLICK_EVENT, function() {
+            console.log(typeof socket);
+            socket.emit(JOIN_LOBBY_GAME_EVENT, gameID);
+        });
+    }
 
     function returnToLobby() {
         clearLobbyGamesTable();
@@ -255,14 +270,10 @@ $(document).ready(function() {
         joinedGameView();
     });
 
-    socket.on(RETURN_TO_LOBBY_EVENT, returnToLobby);
-    socket.on(UPDATE_WAITING_MESSAGE_EVENT, updateWaitingMessage);
-    socket.on(ADD_LOBBY_GAME_EVENT, addSingleLobbyGame);
-
     socket.on(POPULATE_LOBBY_GAMES_EVENT, function(lobbyGamesList) {
         for (let i = 0; i < lobbyGamesList.length; i++) {
             let game = lobbyGamesList[i];
-            addSingleLobbyGame(game[0], game[1], game[2], game[3], socket);
+            addSingleLobbyGame(game[0], game[1], game[2], game[3]);
         }
         socket.emit(REJOIN_LOBBY_EVENT);
     });
@@ -290,33 +301,17 @@ $(document).ready(function() {
        }
     });
 
-    socket.on(DISPLAY_CARDS_REMAINING_EVENT, function(numCards) {
-        updateCardsRemaining(numCards);
-        if (numCards === 0) {
-            eraseDeck();
-            eraseTrumpCard();
-            trumpCard = '';
-        } else if (numCards === 1) {
-            eraseDeck();
-        } else {
-            drawDeck();
-        }
-    });
-
     socket.on(DISPLAY_TRUMP_CARD_EVENT, function(card) {
         drawTrumpCard(card);
         trumpCard = card;
         trumpSuit = getCardSuit(card);
     });
 
-    socket.on(DISPLAY_CARDS_DISCARDED_EVENT, function(numCards) {
-        if (numCards > 0) {
-            drawDiscard();
-        } else {
-            eraseDiscard();
-        }
-    });
-
+    socket.on(DISPLAY_CARDS_REMAINING_EVENT, displayCardsRemaining);
+    socket.on(DISPLAY_CARDS_DISCARDED_EVENT, updateCardsDiscarded);
+    socket.on(RETURN_TO_LOBBY_EVENT, returnToLobby);
+    socket.on(UPDATE_WAITING_MESSAGE_EVENT, updateWaitingMessage);
+    socket.on(ADD_LOBBY_GAME_EVENT, addSingleLobbyGame);
     socket.on(DISPLAY_TRUMP_SUIT_EVENT, drawTrumpSuitText);
     socket.on(UPDATE_USER_STATUS_MESSAGE_EVENT, updateUserStatusText);
     socket.on(DRAW_ATTACKING_EVENT, drawAttacking);
@@ -348,6 +343,7 @@ $(document).ready(function() {
         setPickupButtonVisibility(true);
         requiredCardsToAddThisTurn = attackCards.length;
         populateCardsOnTableVariables(attackCards, defenseCards);
+        displayCardsOnTable(attackCards, defenseCards);
         cardSelected = '';
         maxCardsToAddThisTurn = Math.min(slideToHandSize, CARDS_PER_DIGIT) - attackCards.length;
         canSlide = (maxCardsToAddThisTurn > 0);
@@ -358,7 +354,6 @@ $(document).ready(function() {
         canDefend = true;
         defenseOpenSquare = 0;
         openDefenseSquares([defenseOpenSquare]);
-        displayCardsOnTable(attackCards, defenseCards);
         cardsAddedThisTurn = [];
     });
 
@@ -368,9 +363,9 @@ $(document).ready(function() {
         setDoneButtonVisibility(true);
         maxCardsToAddThisTurn = maxCards;
         populateCardsOnTableVariables(attackCards, defenseCards);
+        displayCardsOnTable(attackCards, defenseCards);
         cardSelected = '';
         attackOpenSquare = attackCards.length;
-        displayCardsOnTable(attackCards, defenseCards);
         openAttackSquares([attackOpenSquare]);
         cardsAddedThisTurn = [];
     });
