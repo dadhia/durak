@@ -6,11 +6,12 @@ class GameStates(Enum):
     ON_ATTACK = auto()
     ON_DEFENSE = auto()
     DEFENDING = auto()  # user has lost opportunity to slide
-    SLIDE = auto()
-    ADDING = auto()
     ADDING_PICKUP = auto()
     ADDING_DEFENSE = auto()
-    PICK_UP = auto()
-    DEFEND = auto()
-    DONE_ATTACKING = auto()
-    DONE_ADDING = auto()
+    TURN_OVER_PICKUP = auto()
+    GAME_OVER = auto()
+
+
+class SynchStates(Enum):
+    ERASING = auto()
+    NOT_ERASING = auto()

@@ -23,7 +23,7 @@ SECRET_KEY = os.urandom(32)
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # initialize databases
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/durak?user=postgres&password=**REMOVED**'
+app.config['SQLALCHEMY_DATABASE_URI'] = ''
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -243,10 +243,9 @@ def rejoin_lobby():
 
 @socketio.on(events.GAME_RESPONSE)
 @login_required
-def game_response_handler(game_id, response, attack_cards, defense_cards):
-    print('got game response')
+def game_response_handler(game_id, response, attack_cards, defense_cards, cards_added_this_turn):
     if game_id in in_progress_games:
-        in_progress_games[game_id].transition_state(response, attack_cards, defense_cards)
+        in_progress_games[game_id].transition_state(response, attack_cards, defense_cards, cards_added_this_turn)
 
 
 @login_manager.user_loader

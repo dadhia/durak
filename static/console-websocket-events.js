@@ -38,3 +38,5 @@ let PICKUP_GAME_RESPONSE = 'pickup';
 let ON_ATTACK_GAME_RESPONSE = 'onAttackResponse';
 let SLIDE_GAME_RESPONSE = 'slide';
 let DEFEND_GAME_RESPONSE = 'defend';
+let ERASE_EVENT = 'eraseAllCards';
+let DONE_ERASING_RESPONSE = 'doneErasing';

@@ -36,3 +36,4 @@ DISPLAY_CARDS_ON_TABLE = "displayCardsOnTable"
 UPDATE_HAND_COUNTS = "updateHandCounts"
 GAME_OVER = "gameOver"
 ADDING = "adding"
+ERASE_EVENT = 'eraseAllCards'

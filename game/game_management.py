@@ -4,10 +4,11 @@ from flask_socketio import emit
 import events
 import random
 from constants import NUM_PLAYERS_TO_LOWEST_CARD, CARD_VALUE_STRINGS_TO_INT, SUIT_TO_FULL_NAME
-from game.game_states import GameStates
+from game.game_states import GameStates, SynchStates
 import game.constants as game_constants
 import constants
 import game.game_responses as responses
+from game.ui_synchronizer import EraseTracker
 
 
 class InProgressGame:
@@ -22,7 +23,8 @@ class InProgressGame:
         self.room_name = room_manager.get_room_name(game.id)
         self.attack_cards = []
         self.defense_cards = []
-        # TODO add seat position into database for statistical purposes - may also be useful for AI training
+        self.erase_tracker = EraseTracker(self.game.num_players)
+        self.erasing_state = SynchStates.NOT_ERASING
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
         self.__initialize_game()
@@ -81,8 +83,8 @@ class InProgressGame:
             self.adding_index = self.attack_index
         else:
             self.adding_index = (self.adding_index - 1) % self.game.num_players
-        while (len(self.hands[self.adding_index]) is 0) or (self.still_playing[self.adding_index] is False) \
-                or (self.adding_index == self.defense_index):
+        while (len(self.hands[self.adding_index]) is 0) and (self.still_playing[self.adding_index] is False) \
+                and (self.adding_index is not self.defense_index):
             self.adding_index = (self.adding_index - 1) % self.game.num_players
 
     def __sort_and_display_updated_hands(self):
@@ -175,6 +177,8 @@ class InProgressGame:
         """ Moves all attack and defense cards to the hand of player with index == player_index."""
         for card in self.attack_cards + self.defense_cards:
             self.__add_card_to_hand(card, player_index)
+        self.attack_cards = []
+        self.defense_cards = []
 
     def __end_turn_adding_pickup(self):
         self.__move_all_cards_on_table_to_hand(self.defense_index)
@@ -182,30 +186,39 @@ class InProgressGame:
 
     def transition_state(self, response, attack_cards, defense_cards, cards_added_this_turn):
         """ Performs state transitions to control game play. """
-        if self.game_state is GameStates.INIT:
-            self.__init_to_attack_transition()
-        elif self.game_state is GameStates.ON_ATTACK and response == responses.ON_ATTACK_RESPONSE:
-            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.attack_index)
-            self.__attack_to_defend_transition()
-        elif self.game_state is GameStates.ON_DEFENSE and response == responses.PICKUP_RESPONSE:
-            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.defense_index)
-            self.__on_defense_to_pickup_transition()
-        elif self.game_state is GameStates.ON_DEFENSE and response == responses.SLIDE_RESPONSE:
-            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
-            pass
-            # TODO
-        elif self.game_state is GameStates.ON_DEFENSE and response == responses.DEFEND_RESPONSE:
-            pass
-            # TODO
-        elif self.game_state is GameStates.ADDING_PICKUP and response == responses.DONE_ADDING_RESPONSE:
-            self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
-            self.__adding_pickup_transition()
+        if self.erasing_state is SynchStates.NOT_ERASING:
+            if self.game_state is GameStates.INIT:
+                self.__init_to_attack_transition()
+            elif self.game_state is GameStates.ON_ATTACK and response == responses.ON_ATTACK_RESPONSE:
+                self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.attack_index)
+                self.__attack_to_defend_transition()
+            elif self.game_state is GameStates.ON_DEFENSE:
+                if response == responses.DEFEND_RESPONSE:
+                    pass  # TODO
+                elif response == responses.PICKUP_RESPONSE:
+                    self.__on_defense_to_pickup_transition()
+                elif response == responses.SLIDE_RESPONSE:
+                    pass  # TODO
+            elif self.game_state is GameStates.ADDING_PICKUP and response == responses.DONE_ADDING_RESPONSE:
+                self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
+                self.__adding_pickup_transition()
 
-        if self.game_state is GameStates.TURN_OVER_PICKUP:
-            # TODO
-            pass
+            if self.game_state is GameStates.TURN_OVER_PICKUP:
+                self.__draw_cards_to_smaller_hands()
+                self.__determine_winners_and_losers()
+                if self.game_state is not GameStates.GAME_OVER:
+                    self.__turn_over_pickup_to_attack_transition()
 
-        self.__update_game()
+            if self.game_state is not GameStates.GAME_OVER:
+                self.erase_tracker.start_new_erase_sequence()
+                self.erasing_state = SynchStates.ERASING
+                emit(events.ERASE_EVENT, room=self.room_name)
+
+        elif (self.erasing_state is SynchStates.ERASING) and (response == responses.DONE_ERASING):
+            done_erasing = self.erase_tracker.add_erase()
+            if done_erasing:
+                self.erasing_state = SynchStates.NOT_ERASING
+                self.__update_game()
 
     def __init_to_attack_transition(self):
         """ Takes the game from INIT to the first move which is always an attack. """
@@ -248,6 +261,11 @@ class InProgressGame:
                 self.__move_adding_index(False)
                 if self.adding_index is self.defense_index:
                     self.__end_turn_adding_pickup()
+
+    def __turn_over_pickup_to_attack_transition(self):
+        """ Moves the game from TURN_OVER_PICKUP to ON_ATTACK. """
+        self.__move_attack_and_defense_indices(2)
+        self.game_state = GameStates.ON_ATTACK
 
     def __update_game(self):
         """ Handles all UI events based on the current game state. """
@@ -325,14 +343,20 @@ class InProgressGame:
         self.hands[player_index].append(card)
 
     def __draw_cards_to_smaller_hands(self):
-        if self.deck.no_cards_remaining():
+        if self.deck.no_cards_remaining() or self.__every_hand_has_at_least_six():
             return
         self.__set_drawing_index(True)
-        while self.deck.no_cards_remaining() and (self.drawing_index != self.defense_index):
+        while not self.__every_hand_has_at_least_six() and not self.deck.no_cards_remaining():
             if len(self.hands[self.drawing_index]) < game_constants.MIN_CARDS_PER_HAND:
                 self.deck.draw_cards(1, self.hands[self.drawing_index])
             else:
                 self.__set_drawing_index(False)
+
+    def __every_hand_has_at_least_six(self):
+        for hand in self.hands:
+            if len(hand) < game_constants.MIN_CARDS_PER_HAND:
+                return False
+        return True
 
     def __determine_winners_and_losers(self):
         if self.deck.no_cards_remaining():
@@ -347,8 +371,7 @@ class InProgressGame:
                     still_remaining = player_index
             game_over = self.__game_over(just_finished, still_remaining)
             if game_over:
-                pass
-                # TODO deallocate everything associated with this game
+                self.game_state = GameStates.GAME_OVER
 
     def __game_over(self, just_finished, still_remaining):
         if self.still_playing_count == 0:
