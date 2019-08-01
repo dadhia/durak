@@ -185,14 +185,11 @@ function hideAllGamePlayButtons() {
 }
 
 function displayCardsOnTable(attackCards, defenseCards) {
-    console.log(attackCards.length);
-    console.log(defenseCards.length);
     for (let i = 0; i < attackCards.length; i++) {
         openAttackSquares([i]);
         drawCard(attackCards[i], attackSquareLocations[i]);
     }
     for (let i = attackCards.length; i < 6; i++) {
-        console.log('closing attack square ' + i);
         closeAttackSquares([i]);
     }
     for (let i = 0; i < defenseCards.length; i++) {
@@ -200,7 +197,6 @@ function displayCardsOnTable(attackCards, defenseCards) {
         drawCard(defenseCards[i], defenseSquareLocations[i]);
     }
     for (let i = defenseCards.length; i < 6; i++) {
-        console.log('closing defense square ' + i);
         closeDefenseSquares([i]);
     }
 }
@@ -221,8 +217,6 @@ function clearCardsOnTableVariables() {
     cardsOnAttackSide = [];
     cardsOnDefenseSide = [];
     let cardsOnTable = cardsOnTableUI.values();
-    console.log('size of cards on table values ' + cardsOnTable.length);
-    console.log('size of cards on table keys ' + cardsOnTable.keys)
     for (let card of cardsOnTableUI) {
         eraseCard(card);
     }
@@ -243,7 +237,6 @@ $(document).ready(function() {
 
     socket.on(CONNECT_EVENT, function() {
         lobbyView();
-        console.log(typeof socket);
         socket.emit(REQUEST_ALL_LOBBY_GAMES_EVENT);
     });
 
@@ -253,7 +246,6 @@ $(document).ready(function() {
                 `<td><button type="button" class="btn btn-primary" id="${buttonID}">Join</button></td>`;
         $('#openGamesTable').append(nextRow);
         $('#' + buttonID).on(CLICK_EVENT, function() {
-            console.log(typeof socket);
             socket.emit(JOIN_LOBBY_GAME_EVENT, gameID);
         });
     }
