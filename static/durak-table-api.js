@@ -6,11 +6,27 @@ var userStatusText;
 const userStatusTextLocation = generateLocation(2, 500);
 var cards = {};
 var gameBoardState;
+let digitMap = new Map();
+digitMap.set('0', 0);
+digitMap.set('1', 1);
+digitMap.set('2', 2);
+digitMap.set('3', 3);
+digitMap.set('4', 4);
+digitMap.set('5', 5);
+digitMap.set('6', 6);
+digitMap.set('7', 7);
+digitMap.set('8', 8);
+digitMap.set('9', 9);
+digitMap.set('10', 10);
+digitMap.set('j', 11);
+digitMap.set('q', 12);
+digitMap.set('k', 13);
+digitMap.set('a', 14);
 const DISABLED_STATE = 'DISABLED';
 const ON_ATTACK_STATE = 'ON_ATTACK';
 const ON_DEFENSE_STATE = 'ON_DEFENSE';
 const ADDING_STATE = 'ADDING';
-const DEFENDING_STATE = 'defending';
+const DEFENDING_STATE = 'DEFENDING';
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
@@ -95,7 +111,6 @@ function generateUsernameTexts(numPlayers, names) {
         let handCards = generateTextObject('Cards In Hand: 0', cardsRemainingLocation, 12, '#C6E2FF');
         canvas.add(handCards);
         individualCardsRemainingTexts.push(handCards);
-        console.log('hand cards text size ' + individualCardsRemainingTexts.length);
     }
 }
 
@@ -261,7 +276,6 @@ function drawDeck() {
 }
 
 function updateCardsDiscarded(numCards) {
-    console.log( `Cards Discarded: ${numCards}`);
     cardsDiscardedText.text = `Cards Discarded: ${numCards}`;
     if (numCards > 0) {
         drawCard('discard', discardLocation);
@@ -413,7 +427,7 @@ function getCanvas() {
 }
 
 function getCardDigit(card) {
-    return card.substring(1);
+    return digitMap.get(card.substring(1));
 }
 
 function getCardSuit(card) {

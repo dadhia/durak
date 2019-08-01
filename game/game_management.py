@@ -139,12 +139,11 @@ class InProgressGame:
         """ Shows current cards and disables board for all players besides special_index. """
         for player_index in range(self.game.num_players):
             if player_index is not special_index:
-                emit(events.DISABLE_GAME_BOARD, room=self.session_ids[player_index])
-                emit(events.DISPLAY_CARDS_ON_TABLE, (self.attack_cards, self.defense_cards),
+                emit(events.DISABLE_GAME_BOARD, (self.attack_cards, self.defense_cards),
                      room=self.session_ids[player_index])
 
     def __enable_attack_ui(self):
-        max_cards = min(len(self.hands[self.defense_index]), 4)
+        max_cards = min(len(self.hands[self.defense_index]), game_constants.MAX_CARDS_PER_DIGIT)
         emit(events.ON_ATTACK, max_cards, room=self.session_ids[self.attack_index])
         self.__disable_boards(self.attack_index)
 
@@ -155,9 +154,10 @@ class InProgressGame:
         self.__disable_boards(self.defense_index)
 
     def __enable_adding_ui(self):
-        max_total_cards = min(game_constants.MAX_CARDS_PER_ATTACK, len(self.hands[self.defense_index]))
-        max_cards = max_total_cards - len(self.attack_cards)
-        emit(events.ADDING, (self.attack_cards, self.defense_cards, max_cards), room=self.session_ids[self.adding_index])
+        max_total_cards = game_constants.MAX_CARDS_PER_ATTACK - len(self.attack_cards)
+        max_cards_to_add = min(len(self.hands[self.defense_index]), max_total_cards)
+        emit(events.ADDING, (self.attack_cards, self.defense_cards, max_cards_to_add),
+             room=self.session_ids[self.adding_index])
         self.__disable_boards(self.adding_index)
 
     def __enable_defending_ui(self):
