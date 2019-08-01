@@ -148,7 +148,7 @@ class InProgressGame:
         emit(events.ON_ATTACK, max_cards, room=self.session_ids[self.attack_index])
         self.__disable_boards(self.attack_index)
 
-    def __enable_defense_ui(self):
+    def __enable_on_defense_ui(self):
         slide_to_player_hand_size = len(self.hands[self.slide_index])
         emit(events.ON_DEFENSE, (self.attack_cards, self.defense_cards, slide_to_player_hand_size),
              room=self.session_ids[self.defense_index])
@@ -159,6 +159,10 @@ class InProgressGame:
         max_cards = max_total_cards - len(self.attack_cards)
         emit(events.ADDING, (self.attack_cards, self.defense_cards, max_cards), room=self.session_ids[self.adding_index])
         self.__disable_boards(self.adding_index)
+
+    def __enable_defending_ui(self):
+        emit(events.DEFENDING, (self.attack_cards, self.defense_cards), room=self.session_ids[self.defense_index])
+        self.__disable_boards(self.defense_index)
 
     def __get_screen_name(self, player_index):
         return self.player_info[player_index].screen_name
@@ -180,9 +184,22 @@ class InProgressGame:
         self.attack_cards = []
         self.defense_cards = []
 
-    def __end_turn_adding_pickup(self):
+    def __discard_all_cards_on_table(self):
+        """ Discards all the cards on the table after a successful defense. """
+        for card in self.attack_cards + self.defense_cards:
+            self.deck.discard_card(card)
+        self.attack_cards = []
+        self.defense_cards = []
+
+    def __end_turn_pickup(self):
+        """ Performs end of turn sequence after all players have finished adding to a pickup. """
         self.__move_all_cards_on_table_to_hand(self.defense_index)
         self.game_state = GameStates.TURN_OVER_PICKUP
+
+    def __end_turn_successful_defense(self):
+        """ Performs end of turn sequence after a successful defense. """
+        self.__discard_all_cards_on_table()
+        self.game_state = GameStates.TURN_OVER_DEFENSE
 
     def transition_state(self, response, attack_cards, defense_cards, cards_added_this_turn):
         """ Performs state transitions to control game play. """
@@ -193,21 +210,31 @@ class InProgressGame:
                 self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.attack_index)
                 self.__attack_to_defend_transition()
             elif self.game_state is GameStates.ON_DEFENSE:
+                self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.defense_index)
                 if response == responses.DEFEND_RESPONSE:
-                    pass  # TODO
+                    self.__on_defense_to_defend_transition()
                 elif response == responses.PICKUP_RESPONSE:
                     self.__on_defense_to_pickup_transition()
                 elif response == responses.SLIDE_RESPONSE:
-                    pass  # TODO
+                    self.__on_defense_to_slide_transition()
             elif self.game_state is GameStates.ADDING_PICKUP and response == responses.DONE_ADDING_RESPONSE:
                 self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
                 self.__adding_pickup_transition()
+            elif self.game_state is GameStates.ADDING_DEFENSE and response == responses.DONE_ADDING_RESPONSE:
+                self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
+                self.__adding_defense_transition()
+            elif self.game_state is GameStates.DEFENDING:
+                self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.defense_index);
+                if response == responses.DEFEND_RESPONSE:
+                    self.__defending_transition()
+                elif response == responses.PICKUP_RESPONSE:
+                    self.__defending_to_pickup_transition()
 
-            if self.game_state is GameStates.TURN_OVER_PICKUP:
+            if (self.game_state is GameStates.TURN_OVER_PICKUP) or (self.game_state is GameStates.TURN_OVER_DEFENSE):
                 self.__draw_cards_to_smaller_hands()
                 self.__determine_winners_and_losers()
                 if self.game_state is not GameStates.GAME_OVER:
-                    self.__turn_over_pickup_to_attack_transition()
+                    self.__turn_over_to_attack_transition()
 
             if self.game_state is not GameStates.GAME_OVER:
                 self.erase_tracker.start_new_erase_sequence()
@@ -237,35 +264,89 @@ class InProgressGame:
         max_pairings = len(self.hands[self.defense_index])
         attack_cards_added = len(self.attack_cards)
         if (max_pairings == attack_cards_added) or (attack_cards_added == game_constants.MAX_CARDS_PER_ATTACK):
-            for card in self.defense_cards + self.attack_cards:
-                self.__add_card_to_deck(self.defense_index, card)
-            self.__draw_cards_to_smaller_hands()
-            self.__determine_winners_and_losers()
+            self.__end_turn_pickup()
         else:
             self.__move_adding_index(True)
             if self.adding_index is self.defense_index:  # no add possible
-                self.__end_turn_adding_pickup()
+                self.__end_turn_pickup()
             else:
                 self.game_state = GameStates.ADDING_PICKUP
 
+    def __on_defense_to_slide_transition(self):
+        """ Takes the appropriate transition from ON_DEFENSE with a SLIDE response."""
+        self.__move_attack_and_defense_indices(1)
+        self.game_state = GameStates.ON_DEFENSE
+        self.__set_slide_index()
+
+    def __on_defense_to_defend_transition(self):
+        """ Transitions game from ON_DEFENSE to DEFENDING (no option for slide). """
+        cards_in_defenders_hand = len(self.hands[self.defense_index])
+        if cards_in_defenders_hand is 0:
+            self.__end_turn_successful_defense()
+        else:
+            self.__move_adding_index(True)
+            if self.adding_index is self.defense_index:  # no add possible
+                self.__end_turn_successful_defense()
+            else:
+                self.game_state = GameStates.ADDING_DEFENSE
+
     def __adding_pickup_transition(self):
-        """ Performs necessary transitions at the end of an adding - 'doneAdding'. """
+        """ Performs necessary transitions at the end of an adding - 'doneAdding' for ADDING_PICKUP"""
         if len(self.attack_cards) is game_constants.MAX_CARDS_PER_ATTACK:
-            self.__end_turn_adding_pickup()
+            self.__end_turn_pickup()
         else:
             cards_in_defender_hand = len(self.hands[self.defense_index])
             extra_attack_cards = len(self.attack_cards) - len(self.defense_cards)
             if extra_attack_cards == cards_in_defender_hand:
-                self.__end_turn_adding_pickup()
+                self.__end_turn_pickup()
             else:
                 self.__move_adding_index(False)
                 if self.adding_index is self.defense_index:
-                    self.__end_turn_adding_pickup()
+                    self.__end_turn_pickup()
 
-    def __turn_over_pickup_to_attack_transition(self):
-        """ Moves the game from TURN_OVER_PICKUP to ON_ATTACK. """
-        self.__move_attack_and_defense_indices(2)
+    def __adding_defense_transition(self):
+        """ Performs necessary transitions at the end of an adding - 'doneAdding' for ADDING_DEFENSE. """
+        if len(self.attack_cards) is len(self.defense_cards):   # no cards were added this turn
+            self.__move_adding_index(False)
+            if self.adding_index is self.defense_index:
+                self.__end_turn_successful_defense()
+        else:
+            self.game_state = GameStates.DEFENDING
+
+    def __turn_over_to_attack_transition(self):
+        """ Moves the game from either TURN_OVER_PICKUP or TURN_OVER_DEFENSE into ON_ATTACK."""
+        if self.game_state is GameStates.TURN_OVER_PICKUP:
+            self.__move_attack_and_defense_indices(2)
+        elif self.game_state is GameStates.TURN_OVER_DEFENSE:
+            self.__move_attack_and_defense_indices(1)
         self.game_state = GameStates.ON_ATTACK
+
+    def __defending_transition(self):
+        """ Performs necessary transition from DEFENDING after a 'defense' response is received. """
+        cards_on_attack = len(self.attack_cards)
+        defender_hand_size = len(self.hands[self.defense_index])
+        if (cards_on_attack is game_constants.MAX_CARDS_PER_ATTACK) or (defender_hand_size is 0):
+            self.__end_turn_successful_defense()
+        else:
+            self.__move_adding_index(True)
+            if self.adding_index is self.defense_index:
+                self.__end_turn_successful_defense()
+            else:
+                self.game_state = GameStates.ADDING_DEFENSE
+
+    def __defending_to_pickup_transition(self):
+        """ Performs necessary transition from DEFENDING after a 'pickup' response is received."""
+        extra_attack_cards = len(self.attack_cards) - len(self.defense_cards)
+        total_attack_cards = len(self.attack_cards)
+        defense_hand_size = len(self.hands[self.defense_index])
+        if (total_attack_cards is game_constants.MAX_CARDS_PER_ATTACK) or (extra_attack_cards is defense_hand_size):
+            self.__end_turn_pickup()
+        else:
+            self.__move_adding_index(True)
+            if self.adding_index is self.defense_index:
+                self.__end_turn_pickup()
+            else:
+                self.game_state = GameStates.ADDING_PICKUP
 
     def __update_game(self):
         """ Handles all UI events based on the current game state. """
@@ -284,14 +365,21 @@ class InProgressGame:
             self.__draw_attacking_label()
             self.__draw_defending_label()
             self.__erase_adding_label()
-            self.__enable_defense_ui()
-        elif self.game_state is GameStates.ADDING_PICKUP:
+            self.__enable_on_defense_ui()
+        elif self.game_state is GameStates.ADDING_PICKUP or self.game_state is GameStates.ADDING_DEFENSE:
             self.__sort_and_display_updated_hands()
             self.__send_adding_message()
             self.__erase_attacking_label()
             self.__draw_defending_label()
             self.__draw_adding_label()
             self.__enable_adding_ui()
+        elif self.game_state is GameStates.DEFENDING:
+            self.__sort_and_display_updated_hands()
+            self.__send_on_defense_message()
+            self.__draw_attacking_label()
+            self.__draw_defending_label()
+            self.__erase_adding_label()
+            self.__enable_defending_ui()
 
     def __construct_on_attack_message(self):
         on_defense_screen_name = self.__get_screen_name(self.defense_index)

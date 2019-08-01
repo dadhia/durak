@@ -9,6 +9,7 @@ class GameStates(Enum):
     ADDING_PICKUP = auto()
     ADDING_DEFENSE = auto()
     TURN_OVER_PICKUP = auto()
+    TURN_OVER_DEFENSE = auto()
     GAME_OVER = auto()
 
 

@@ -10,6 +10,7 @@ const DISABLED_STATE = 'DISABLED';
 const ON_ATTACK_STATE = 'ON_ATTACK';
 const ON_DEFENSE_STATE = 'ON_DEFENSE';
 const ADDING_STATE = 'ADDING';
+const DEFENDING_STATE = 'defending';
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);

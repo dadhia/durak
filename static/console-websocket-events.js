@@ -4,6 +4,7 @@ let LEAVE_LOBBY_GAME_EVENT = 'leaveLobbyGame';
 let CANCEL_LOBBY_GAME_EVENT = 'cancelLobbyGame';
 let NEW_GAME_EVENT = 'newGame';
 let ON_DEFENSE_EVENT = 'onDefense';
+let DEFENDING_EVENT = 'defending';
 let ON_ATTACK_EVENT = 'onAttack';
 let ADDING_EVENT = 'adding';
 let DISPLAY_TRUMP_SUIT_EVENT = 'displayTrumpSuit';
