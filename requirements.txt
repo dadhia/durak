@@ -1,0 +1,9 @@
+flask
+flask-sqlalchemy
+flask-bootstrap
+flask-login
+flask-socketio
+flask-wtf
+passlib
+psycopg2
+eventlet
