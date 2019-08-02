@@ -6,3 +6,4 @@ Postgresql was used during development.
 
 You should also modify the host and port in static/console-websocket.js to the appropriate value (127.0.0.1:5000 is set for development environments).
 
+Technologies Used Postgresql, Flask, SocketIO, fabric.js
