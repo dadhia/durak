@@ -23,12 +23,16 @@ SECRET_KEY = os.urandom(32)
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # initialize databases
-app.config['SQLALCHEMY_DATABASE_URI'] = ''
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/durak?user=&password='
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+engine_options = {'pool': None, 'pool_size': 0, 'max_overflow': -1}
+db = SQLAlchemy(app, engine_options=engine_options)
 
 from database import db_operations
 from models.user import User
+from models.game import Game
+from models.game_played import GamePlayed
+from models.loss import Loss
 db.create_all()
 
 from game import game_management
@@ -141,20 +145,22 @@ def disconnect():
     Called when a user disconnects from their console.
     Remove any game that this user has created (should only be one) and broadcast this message to all users.
     """
-    game_id = db_operations.get_game_user_has_joined(current_user.id)
-    if game_id is not None and game_id in lobby_games:
-        game = lobby_games[game_id]
-        if game.game_creator == current_user.id:
-            game.cancelled = True
-            db_operations.cancel_game(game.id)
-            del lobby_games[game.id]
-            emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
-            emit(events.RETURN_TO_LOBBY, room=room_manager.get_room_name(game.id))
-        else:
-            db_operations.remove_user_from_game(current_user.id, game_id)
-            emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id), room=LOBBY_ROOM_NAME)
-            emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
-                 room=room_manager.get_room_name(game_id))
+    game = db_operations.get_game_user_has_joined(current_user.id)
+    if game is not None:
+        game_id = game.id
+        if game_id in lobby_games:
+            game = lobby_games[game_id]
+            if game.game_creator == current_user.id:
+                game.cancelled = True
+                db_operations.cancel_game(game.id)
+                del lobby_games[game.id]
+                emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
+                emit(events.RETURN_TO_LOBBY, room=room_manager.get_room_name(game.id))
+            else:
+                db_operations.remove_user_from_game(current_user.id, game_id)
+                emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id), room=LOBBY_ROOM_NAME)
+                emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
+                     room=room_manager.get_room_name(game_id))
     session_manager.remove_session_id(current_user.id)
 
 

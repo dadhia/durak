@@ -70,7 +70,7 @@ def get_game_user_has_joined(user_id):
         .filter(GamePlayed.user_id == user_id)\
         .filter(Game.cancelled == False)\
         .filter(Game.started == False)\
-        .first().id
+        .first()
 
 
 def get_players_in_game(game_id):
@@ -90,4 +90,4 @@ def insert_loss(user_id, game_id):
 
 if __name__ == '__main__':
     """ Simply used for debugging purposes.  Will be deleted for final release. """
-    insert_loss(2, 1)
+    get_game_user_has_joined(1)
