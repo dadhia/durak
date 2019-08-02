@@ -27,8 +27,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = ''
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-from models.user import User
 from database import db_operations
+from models.user import User
 db.create_all()
 
 from game import game_management
@@ -50,11 +50,7 @@ def index():
 def register():
     """ Handles a registration request from a client and verifies that all necessary information is provided. """
     form = RegistrationForm()
-    print(form.Email.data)
-    print(form.Password.data)
-    print(form.ScreenName.data)
     if form.validate_on_submit():
-        print('validated')
         password_hash = pbkdf2_sha256.hash(form.Password.data)
         try:
             new_user = User(email=form.Email.data, password=password_hash, screen_name=form.ScreenName.data)
@@ -259,4 +255,4 @@ def unauthorized():
 
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app, host='0.0.0.0', port=5000)
