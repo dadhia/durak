@@ -248,7 +248,7 @@ function displayCardsRemaining(numCards) {
 }
 
 $(document).ready(function() {
-    var socket = io.connect('http://3.89.233.100:5000');
+    var socket = io.connect('http://127.0.0.1:5000');
 
     socket.on(CONNECT_EVENT, function() {
         lobbyView();
