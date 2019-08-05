@@ -1,4 +1,4 @@
-from app import db
+from database.db import db
 
 
 class Game(db.Model):

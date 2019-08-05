@@ -1,5 +1,4 @@
-from app import db
-
+from database.db import db
 
 class GamePlayed(db.Model):
     """ Keeps track of every game a user has joined. """

@@ -1,4 +1,4 @@
-from app import db
+from database import db
 from models.game import Game
 from models.user import User
 from models.game_played import GamePlayed
