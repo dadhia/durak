@@ -457,7 +457,6 @@ class InProgressGame:
                     just_finished.add(player_index)
                 elif (len(self.hands[player_index])) > 0:
                     still_remaining = player_index
-            print('still remaining count is ' + str(self.still_playing_count))
             game_over = self.__game_over(just_finished, still_remaining)
             if game_over:
                 self.game_state = GameStates.GAME_OVER
@@ -467,7 +466,6 @@ class InProgressGame:
             self.__game_over_with_draw(just_finished)
             return True
         elif self.still_playing_count == 1:
-            print('game over with single loser')
             self.__game_over_with_single_loser(still_remaining)
             return True
         return False
