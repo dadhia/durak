@@ -2,6 +2,11 @@ from threading import Lock
 
 
 class EraseTracker:
+    """
+    Keeps track of erase cycles. Small events which clear a board every time a move has been made.  This is done to
+    ensure that each card has moved to the proper location since the UI was only designed to support one instance of
+    each kind of card anywhere on the game board.
+    """
     def __init__(self, num_players):
         self.lock = Lock()
         self.num_players = num_players
