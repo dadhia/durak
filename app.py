@@ -10,13 +10,12 @@ from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, LOBBY_ROOM_NAME
 from connections import session_manager, room_manager
 import events
 import os
-
-db = SQLAlchemy()
-from database import db_operations
+from database.db import db
 from models.user import User
 from models.game import Game
 from models.game_played import GamePlayed
 from models.loss import Loss
+from database import db_operations
 from game import game_management
 
 
@@ -31,16 +30,15 @@ app = Flask(__name__)
 
 
 def create_app():
-    engine_options = {'pool': None, 'pool_size': 0, 'max_overflow': -1}
-    db.init_app(app, engine_options=engine_options)
+    app.config['SECRET_KEY'] = os.urandom(32)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/durak?user=postgres&password=***REMOVED***'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db.init_app(app)
     login_manager.init_app(app)
     socketio.init_app(app)
     bootstrap.init_app(app)
-    SECRET_KEY = os.urandom(32)
-    app.config['SECRET_KEY'] = SECRET_KEY
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/durak?user=&password='
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    db.create_all()
+    with app.app_context():
+        db.create_all()
 
 
 @app.route('/', methods=['GET'])
