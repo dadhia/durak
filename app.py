@@ -11,35 +11,36 @@ from connections import session_manager, room_manager
 import events
 import os
 
-app = Flask(__name__)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-socketio = SocketIO(app)
-
-Bootstrap(app)
-
-SECRET_KEY = os.urandom(32)
-app.config['SECRET_KEY'] = SECRET_KEY
-
-# initialize databases
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/durak?user=&password='
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-engine_options = {'pool': None, 'pool_size': 0, 'max_overflow': -1}
-db = SQLAlchemy(app, engine_options=engine_options)
-
+db = SQLAlchemy()
 from database import db_operations
 from models.user import User
 from models.game import Game
 from models.game_played import GamePlayed
 from models.loss import Loss
-db.create_all()
-
 from game import game_management
 
+
+login_manager = LoginManager()
+socketio = SocketIO()
+bootstrap = Bootstrap()
 lobby_games = {}
 started_games = {}
 in_progress_games = {}
+
+app = Flask(__name__)
+
+
+def create_app():
+    engine_options = {'pool': None, 'pool_size': 0, 'max_overflow': -1}
+    db.init_app(app, engine_options=engine_options)
+    login_manager.init_app(app)
+    socketio.init_app(app)
+    bootstrap.init_app(app)
+    SECRET_KEY = os.urandom(32)
+    app.config['SECRET_KEY'] = SECRET_KEY
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/durak?user=&password='
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db.create_all()
 
 
 @app.route('/', methods=['GET'])
@@ -261,4 +262,5 @@ def unauthorized():
 
 
 if __name__ == '__main__':
+    create_app()
     socketio.run(app, host='0.0.0.0', port=5000)
