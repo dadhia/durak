@@ -16,6 +16,7 @@ from models.game_played import GamePlayed
 from models.loss import Loss
 from database import db_operations
 from game import game_management
+from game.game_states import GameStates
 
 
 login_manager = LoginManager()
@@ -244,6 +245,9 @@ def rejoin_lobby():
 def game_response_handler(game_id, response, attack_cards, defense_cards, cards_added_this_turn):
     if game_id in in_progress_games:
         in_progress_games[game_id].transition_state(response, attack_cards, defense_cards, cards_added_this_turn)
+        if in_progress_games[game_id].game_state is GameStates.GAME_OVER:
+            del in_progress_games[game_id]
+            del started_games[game_id]
 
 
 @login_manager.user_loader

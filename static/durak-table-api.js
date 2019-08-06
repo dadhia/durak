@@ -61,6 +61,8 @@ var attackSquares = new Array(6);
 var defenseSquares = new Array(6);
 var individualCardsRemainingTexts;
 let deckFlag = false;
+let eraseFlag = false;
+let trumpFlag = false;
 
 function generateBackgroundGraphics() {
     generatePlayersStatusTexts();
@@ -226,10 +228,16 @@ function updateCardsRemaining(numCards) {
     if ((numCards >= 2) && !deckFlag) {
         deckFlag = true;
         drawDeck();
-    } else if (numCards === 1) {
+    } else if ((numCards === 1) && !eraseFlag) {
         eraseDeck();
-    } else if (numCards === 0) {
+        eraseFlag = true;
+    } else if ((numCards === 0) && !trumpFlag) {
         eraseTrumpCard();
+        trumpFlag = true;
+        if (!eraseFlag) {
+            eraseDeck();
+            eraseFlag = true;
+        }
     }
 }
 
