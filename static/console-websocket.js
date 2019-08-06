@@ -50,13 +50,16 @@ function clearLobbyGamesTable() {
 }
 
 function updateWaitingMessage(numPlayers, playersJoined, gameID) {
-    $('#loadingText').text("You have joined game #" + gameID + ". " + playersJoined + " players have " +
-            "joined. Waiting for " + (numPlayers - playersJoined) + " more players to join.");
-    $('#logoutWarning').text("If you logout, you will cancel or leave this game!");
+    let playersLeftToJoin = numPlayers - playersJoined;
+    let loadingText = `You have joined game #${gameID}.  ${playersJoined} players havee joined.  Waiting for ` +
+        `${playersLeftToJoin} more players to join.`;
+    let logoutWarning = `If you logout you will cancel or leave this game!`;
+    $('#loadingText').text(loadingText);
+    $('#logoutWarning').text(logoutWarning);
 }
 
 function cardInHand(card) {
-    return (card !== 'discard') && (card !== 'deck') && (card !== trumpCard) && !cardsOnTableUI.has(card);
+    return (card !== 'discard') && (card !== 'deck') && !cardsOnTableUI.has(card);
 }
 
 function cardPlayable(card) {
@@ -166,11 +169,11 @@ function placeCardDuringOnDefenseState(square) {
 }
 
 function placeCardDuringDefendingState(square) {
-    if (square == getDefenseSquareName(defenseOpenSquare) && canAddCardOnDefenseSide()) {
+    if (square === getDefenseSquareName(defenseOpenSquare) && canAddCardOnDefenseSide()) {
         if (isValidDefense(cardsOnAttackSide[defenseOpenSquare], cardSelected)) {
             addCardToDefense();
             if (canAddCardOnDefenseSide()) {
-                openNextDefenseSquare;
+                openNextDefenseSquare();
             } else {
                 setDefenseButtonVisibility(true);
             }
@@ -242,13 +245,6 @@ function clearCardsOnTableVariables() {
     cardsOnDefenseSide = [];
     cardsOnTableUI.clear();
     digitsOnTable.clear();
-}
-
-function displayCardsRemaining(numCards) {
-    updateCardsRemaining(numCards);
-    if (numCards === 0) {
-        trumpCard = '';
-    }
 }
 
 $(document).ready(function() {
@@ -325,11 +321,10 @@ $(document).ready(function() {
 
     socket.on(DISPLAY_TRUMP_CARD_EVENT, function(card) {
         drawTrumpCard(card);
-        trumpCard = card;
         trumpSuit = getCardSuit(card);
     });
 
-    socket.on(DISPLAY_CARDS_REMAINING_EVENT, displayCardsRemaining);
+    socket.on(DISPLAY_CARDS_REMAINING_EVENT, updateCardsRemaining);
     socket.on(DISPLAY_CARDS_DISCARDED_EVENT, updateCardsDiscarded);
     socket.on(RETURN_TO_LOBBY_EVENT, returnToLobby);
     socket.on(UPDATE_WAITING_MESSAGE_EVENT, updateWaitingMessage);
@@ -343,6 +338,7 @@ $(document).ready(function() {
     socket.on(DRAW_ADDING_EVENT, drawAdding);
     socket.on(ERASE_ADDING_EVENT, eraseAdding);
     socket.on(UPDATE_HAND_COUNTS_EVENT, updateCardsInHand);
+
     socket.on(ERASE_EVENT, function() {
         eraseAllCardsOnTable();
         socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DONE_ERASING_RESPONSE, [], [], []);
@@ -438,32 +434,37 @@ $(document).ready(function() {
     $('#attackButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_ATTACK_STATE) {
             if (cardsAddedThisTurn.length > 0) {
-                socket.emit(GAME_RESPONSE_EVENT, joinedGameID, ON_ATTACK_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+                socket.emit(GAME_RESPONSE_EVENT, joinedGameID, ON_ATTACK_GAME_RESPONSE, cardsOnAttackSide,
+                    cardsOnDefenseSide, cardsAddedThisTurn);
             }
         }
     });
 
     $('#pickupButton').on(CLICK_EVENT, function() {
         if ((getGameBoardState() === ON_DEFENSE_STATE) || (getGameBoardState() === DEFENDING_STATE)) {
-            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, PICKUP_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, PICKUP_GAME_RESPONSE, cardsOnAttackSide,
+                cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 
     $('#slideButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_DEFENSE_STATE) {
-            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, SLIDE_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, SLIDE_GAME_RESPONSE, cardsOnAttackSide,
+                cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 
     $('#doneButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ADDING_STATE) {
-            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DONE_ADDING_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DONE_ADDING_GAME_RESPONSE, cardsOnAttackSide,
+                cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 
     $('#defenseButton').on(CLICK_EVENT, function() {
         if ((getGameBoardState() === ON_DEFENSE_STATE) || (getGameBoardState() === DEFENDING_STATE)) {
-            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DEFEND_GAME_RESPONSE, cardsOnAttackSide, cardsOnDefenseSide, cardsAddedThisTurn);
+            socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DEFEND_GAME_RESPONSE, cardsOnAttackSide,
+                cardsOnDefenseSide, cardsAddedThisTurn);
         }
     });
 });
