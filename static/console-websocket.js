@@ -252,7 +252,7 @@ function displayCardsRemaining(numCards) {
 }
 
 $(document).ready(function() {
-    var socket = io.connect('http://3.89.233.100:5000');
+    var socket = io.connect('http://127.0.0.1:5000');
 
     socket.on(CONNECT_EVENT, function() {
         lobbyView();
@@ -272,7 +272,6 @@ $(document).ready(function() {
     function eraseAllCardsOnTable() {
         eraseCardsOnTable();
         eraseCardsInHand();
-        socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DONE_ERASING_RESPONSE, [], [], []);
     }
 
     function returnToLobby() {
@@ -344,7 +343,10 @@ $(document).ready(function() {
     socket.on(DRAW_ADDING_EVENT, drawAdding);
     socket.on(ERASE_ADDING_EVENT, eraseAdding);
     socket.on(UPDATE_HAND_COUNTS_EVENT, updateCardsInHand);
-    socket.on(ERASE_EVENT, eraseAllCardsOnTable);
+    socket.on(ERASE_EVENT, function() {
+        eraseAllCardsOnTable();
+        socket.emit(GAME_RESPONSE_EVENT, joinedGameID, DONE_ERASING_RESPONSE, [], [], []);
+    });
 
     socket.on(ON_ATTACK_EVENT, function(maxCards) {
         setGameBoardState(ON_ATTACK_STATE);
@@ -413,8 +415,9 @@ $(document).ready(function() {
     });
 
     socket.on(GAME_OVER_EVENT, function(message) {
-       $('#gameOverText').text(message);
-       gameOverView();
+        // TODO clean up UI to allow for a brand new game
+        $('#gameOverText').text(message);
+        gameOverView();
     });
 
     $('#newGameButton').on(CLICK_EVENT, function() {

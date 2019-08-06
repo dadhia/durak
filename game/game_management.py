@@ -247,6 +247,7 @@ class InProgressGame:
                 self.erasing_state = SynchStates.NOT_ERASING
                 self.__update_game()
 
+
     def __init_to_attack_transition(self):
         """ Takes the game from INIT to the first move which is always an attack. """
         self.attack_index = random.randint(0, self.game.num_players - 1)
