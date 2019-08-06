@@ -48,7 +48,7 @@ class InProgressGame:
             new_hand = []
             self.deck.draw_cards(game_constants.MIN_CARDS_PER_HAND, new_hand)
             self.hands.append(new_hand)
-        self.trump_card = self.deck.draw_card()
+        self.trump_card = self.deck.draw_trump_card()
         self.trump_suit = self.trump_card[0]
         self.__display_trump_suit()
         # we display the trump card and the UI automatically removes it when cards remaining == 0
@@ -224,7 +224,7 @@ class InProgressGame:
                 self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.adding_index)
                 self.__adding_defense_transition()
             elif self.game_state is GameStates.DEFENDING:
-                self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.defense_index);
+                self.__update_cards_on_table(attack_cards, defense_cards, cards_added_this_turn, self.defense_index)
                 if response == responses.DEFEND_RESPONSE:
                     self.__defending_transition()
                 elif response == responses.PICKUP_RESPONSE:
@@ -246,7 +246,6 @@ class InProgressGame:
             if done_erasing:
                 self.erasing_state = SynchStates.NOT_ERASING
                 self.__update_game()
-
 
     def __init_to_attack_transition(self):
         """ Takes the game from INIT to the first move which is always an attack. """

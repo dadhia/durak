@@ -40,7 +40,7 @@ const statusTextLocations = [generateLocation(280, 105), generateLocation(640, 2
 const individualCardsRemainingLocations = [generateLocation(280, 120), generateLocation(640, 40), generateLocation(960, 125),
     generateLocation(960, 440), generateLocation(640, 540), generateLocation(640, 440)];
 const playerIndices = [[1, 4], [0, 2, 4], [0, 2, 3, 5], [0, 1, 2, 3, 5], [0, 1, 2, 3, 4, 5]];
-var trumpCard;
+let trumpCard;
 
 var firstCardLocation = generateLocation(80, 630);
 
@@ -232,6 +232,7 @@ function updateCardsRemaining(numCards) {
         eraseDeck();
         eraseFlag = true;
     } else if ((numCards === 0) && !trumpFlag) {
+        console.log('erasing trump card');
         eraseTrumpCard();
         trumpFlag = true;
         if (!eraseFlag) {
@@ -241,9 +242,9 @@ function updateCardsRemaining(numCards) {
     }
 }
 
-function generateCardObject(id) {
+function generateCardObject(id, cardObjectID) {
     var image = document.getElementById(`card-${id}`);
-    var cardCanvasObject = new fabric.Image(image, {selectable: false, id:id});
+    var cardCanvasObject = new fabric.Image(image, {selectable: false, id:cardObjectID});
     cardCanvasObject.scale(0.3);
     return cardCanvasObject;
 }
@@ -254,17 +255,17 @@ function pregenerateCardObjects() {
     for (let suitIndex = 0; suitIndex < suits.length; suitIndex++) {
         for (let i = 2; i < 11; i ++) {
             let cardString = String(suits.charAt(suitIndex)) + String(i);
-            cards[cardString] = generateCardObject(cardString);
+            cards[cardString] = generateCardObject(cardString, cardString);
             objectToCard[cards[cardString]] = cardString;
         }
         for (let i = 0; i < royals.length; i++) {
             let cardString = String(suits.charAt(suitIndex)) + String(royals.charAt(i));
-            cards[cardString] = generateCardObject(cardString);
+            cards[cardString] = generateCardObject(cardString, cardString);
             objectToCard[cards[cardString]] = cardString;
         }
     }
-    cards['deck'] = generateCardObject('back');
-    cards['discard'] = generateCardObject('back');
+    cards['deck'] = generateCardObject('back', 'deck');
+    cards['discard'] = generateCardObject('back', 'discard');
     objectToCard[cards['discard']] = 'discard';
     objectToCard[cards['deck']] = 'deck';
 }
@@ -279,8 +280,14 @@ function eraseCard(card) {
 }
 
 function drawTrumpCard(card) {
-    drawCard(card, trumpLocation);
-    trumpCard = card;
+    trumpCard = generateCardObject(card, 'trump');
+    trumpCard.set(trumpLocation);
+    canvas.add(trumpCard);
+}
+
+function eraseTrumpCard() {
+    console.log('removing trump card');
+    canvas.remove(trumpCard);
 }
 
 function drawDeck() {
@@ -298,10 +305,6 @@ function updateCardsDiscarded(numCards) {
 
 function eraseDeck() {
     eraseCard('deck');
-}
-
-function eraseTrumpCard() {
-    eraseCard(trumpCard);
 }
 
 function prepareCanvas(numPlayers, usernames) {
