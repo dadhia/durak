@@ -40,3 +40,4 @@ let SLIDE_GAME_RESPONSE = 'slide';
 let DEFEND_GAME_RESPONSE = 'defend';
 let ERASE_EVENT = 'eraseAllCards';
 let DONE_ERASING_RESPONSE = 'doneErasing';
+let NEW_CONSOLE_EVENT = 'newConsole';

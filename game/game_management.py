@@ -41,7 +41,7 @@ class InProgressGame:
         screen_names = []
         for player in self.player_info:
             screen_names.append(player.screen_name)
-        emit(events.INIT_GAME, (self.game.id, self.game.num_players, screen_names), room=self.room_name)
+        emit(events.INIT_GAME, (self.game.id, screen_names), room=self.room_name)
         self.deck = DurakDeck(NUM_PLAYERS_TO_LOWEST_CARD[self.game.num_players])
         self.hands = []
         for i in range(self.game.num_players):
