@@ -8,5 +8,6 @@ class Game(db.Model):
     num_players = db.Column(db.Integer, nullable=False)
     started = db.Column(db.Boolean, nullable=False)
     cancelled = db.Column(db.Boolean, nullable=False)
+    completed = db.Column(db.Boolean, nullable=False)
     players_joined = db.Column(db.Integer, nullable=False)
 

@@ -2,12 +2,10 @@ session_ids = {}
 
 
 def add_session_id(user_id, session_id):
-    print('replacing session id for user ' + str(user_id))
     session_ids[user_id] = session_id
 
 
 def remove_session_id(user_id):
-    print('deleting session id for user ' + str(user_id))
     del session_ids[user_id]
 
 
