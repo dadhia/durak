@@ -5,7 +5,7 @@ from flask_socketio import SocketIO, emit
 from forms.user_forms import LoginForm, RegistrationForm
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError
-from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, LOBBY_ROOM_NAME
+from constants import GENERIC_ERROR_MESSAGE, DUPLICATE_EMAIL, LOBBY_ROOM_NAME, GAME_OVER_DUE_TO_DISCONNECT
 from connections import session_manager, room_manager
 import events
 import os
@@ -23,7 +23,6 @@ login_manager = LoginManager()
 socketio = SocketIO()
 bootstrap = Bootstrap()
 lobby_games = {}
-started_games = {}
 in_progress_games = {}
 
 app = Flask(__name__)
@@ -99,7 +98,6 @@ def console():
 @login_required
 def logout():
     """ Handles a logout request from a client. """
-    # TODO force a disconnect
     logout_user()
     return redirect(url_for('index'))
 
@@ -112,7 +110,7 @@ def connect():
     We will send them all available games for them to join.
     """
     session_manager.add_session_id(current_user.id, request.sid)
-    room_manager.join_lobby()
+    room_manager.join_lobby(current_user.id)
     # TODO - are they already in a game?
 
 
@@ -127,8 +125,6 @@ def new_game(num_players):
     game = db_operations.insert_new_game(current_user.id, int(num_players))
     db_operations.add_user_to_game(current_user.id, game.id)
     lobby_games[game.id] = game
-
-    room_manager.create_room(game.id)
     room_manager.move_to_room(game.id, current_user.id)
 
     emit(events.WAITING_FOR_PLAYERS, (num_players, 1, game.id, True))
@@ -143,24 +139,35 @@ def disconnect():
     """
     Called when a user disconnects from their console.
     Remove any game that this user has created (should only be one) and broadcast this message to all users.
+    It will also check if the user is currently playing a game, assign a loss for that game to that user, and then
+    return all remaining players from that game to a landing screen explaining what happened.
     """
+    room_manager.leave_room_if_any(current_user.id)
+    session_manager.remove_session_id(current_user.id)
     game = db_operations.get_game_user_has_joined(current_user.id)
     if game is not None:
-        game_id = game.id
-        if game_id in lobby_games:
-            game = lobby_games[game_id]
+        if game.id in lobby_games:
+            game = lobby_games[game.id]
             if game.game_creator == current_user.id:
-                game.cancelled = True
                 db_operations.cancel_game(game.id)
                 del lobby_games[game.id]
-                emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=LOBBY_ROOM_NAME)
+                emit(events.REMOVE_GAME_FROM_LOBBY, game.id, room=room_manager.get_lobby_name())
                 emit(events.RETURN_TO_LOBBY, room=room_manager.get_room_name(game.id))
             else:
-                db_operations.remove_user_from_game(current_user.id, game_id)
-                emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id), room=LOBBY_ROOM_NAME)
-                emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game_id),
-                     room=room_manager.get_room_name(game_id))
-    session_manager.remove_session_id(current_user.id)
+                db_operations.remove_user_from_game(current_user.id, game.id)
+                emit(events.UPDATE_LOBBY_GAME, (game.num_players - game.players_joined, game.id),
+                     room=room_manager.get_lobby_name())
+                emit(events.UPDATE_WAITING_MESSAGE, (game.num_players, game.players_joined, game.id),
+                     room=room_manager.get_room_name(game.id))
+    else:
+        game = db_operations.get_game_user_is_playing(current_user.id)
+        if game is not None:
+            if game.id in in_progress_games:
+                db_operations.cancel_game(game.id)
+                db_operations.insert_loss(current_user.id, game.id)
+                del in_progress_games[game.id]
+                message = GAME_OVER_DUE_TO_DISCONNECT % current_user.screen_name
+                emit(events.GAME_OVER, message, room=room_manager.get_room_name(game.id))
 
 
 @socketio.on(events.CANCEL_LOBBY_GAME)
@@ -190,7 +197,6 @@ def join_lobby_game(game_id):
         game = db_operations.get_game(game_id)
         if game.num_players == game.players_joined:
             lobby_games[game_id].started = True
-            started_games[game_id] = lobby_games[game_id]
             del lobby_games[game_id]
             db_operations.set_game_started_true(game_id)
             room_manager.move_to_room(game_id, current_user.id)
@@ -237,7 +243,7 @@ def request_all_lobby_games():
 @login_required
 def rejoin_lobby():
     """ Handles request from client to rejoin lobby. """
-    room_manager.rejoin_lobby(current_user.id)
+    room_manager.join_lobby(current_user.id)
 
 
 @socketio.on(events.GAME_RESPONSE)
@@ -247,7 +253,6 @@ def game_response_handler(game_id, response, attack_cards, defense_cards, cards_
         in_progress_games[game_id].transition_state(response, attack_cards, defense_cards, cards_added_this_turn)
         if in_progress_games[game_id].game_state is GameStates.GAME_OVER:
             del in_progress_games[game_id]
-            del started_games[game_id]
 
 
 @login_manager.user_loader

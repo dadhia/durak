@@ -28,7 +28,7 @@ class InProgressGame:
         random.shuffle(self.player_info)
         self.__acquire_session_ids()
         self.__initialize_game()
-        self.transition_state(None, None, None, None)
+        self.transition_state('', None, None, None)
 
     def __acquire_session_ids(self):
         self.session_ids = []
@@ -389,7 +389,8 @@ class InProgressGame:
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
         return '%s is attacking %s' % (on_attack_screen_name, on_defense_screen_name)
 
-    def __construct_on_defense_message(self):
+    @staticmethod
+    def __construct_on_defense_message():
         return 'YOUR TURN: Defending'
 
     def __construct_on_defense_status_message(self):
@@ -456,6 +457,7 @@ class InProgressGame:
                     still_remaining = player_index
             game_over = self.__game_over(just_finished, still_remaining)
             if game_over:
+                db_operations.set_game_completed_true(self.game.id)
                 self.game_state = GameStates.GAME_OVER
 
     def __game_over(self, just_finished, still_remaining):
@@ -517,7 +519,7 @@ class DurakDeck:
         else:
             return None
 
-    def discard_card(self, card):
+    def discard_card(self):
         # NOTE: for now we do not keep track of discarded cards, but we can implement this later to build an AI
         self.cards_discarded += 1
 

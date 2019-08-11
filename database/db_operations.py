@@ -18,7 +18,8 @@ def get_game(game_id):
 
 def insert_new_game(user_id, num_players):
     """ Adds a new game into the database. """
-    game = Game(game_creator=user_id, num_players=num_players, started=False, cancelled=False, players_joined=0)
+    game = Game(game_creator=user_id, num_players=num_players, started=False, cancelled=False, completed=False,
+                players_joined=0)
     db.session.add(game)
     db.session.commit()
     return game
@@ -35,6 +36,13 @@ def set_game_started_true(game_id):
     """ Sets the started value for a game with game_id to True. """
     game = Game.query.filter_by(id=game_id).first()
     game.started = True
+    db.session.commit()
+
+
+def set_game_completed_true(game_id):
+    """ Sets the completed value for a game with game_id to True. """
+    game = Game.query.filter_by(id=game_id).first()
+    game.completed = True
     db.session.commit()
 
 
@@ -70,6 +78,18 @@ def get_game_user_has_joined(user_id):
         .filter(GamePlayed.user_id == user_id)\
         .filter(Game.cancelled == False)\
         .filter(Game.started == False)\
+        .first()
+
+
+def get_game_user_is_playing(user_id):
+    """ Gets a game, if any, that a user is playing right now. """
+    return db.session.query(Game.id)\
+        .join(GamePlayed)\
+        .filter(GamePlayed.game_id == Game.id)\
+        .filter(GamePlayed.user_id == user_id)\
+        .filter(Game.started == True)\
+        .filter(Game.completed == False)\
+        .filter(Game.cancelled == False)\
         .first()
 
 
