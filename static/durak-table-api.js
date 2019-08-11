@@ -1,35 +1,23 @@
 let canvas;
-let cardsRemainingText;
-let cardsDiscardedText;
-let attackingStatusText, defendingStatusText, addingStatusText, userStatusText;
-const userStatusTextLocation = generateLocation(2, 500);
+let cardsRemainingText, cardsDiscardedText, attackingStatusText, defendingStatusText, addingStatusText, userStatusText;
 let cards = {};
+let digitMap = new Map([['0', 0], ['1', 1], ['2', 2], ['3', 3], ['4', 4], ['5', 5], ['6', 6], ['7', 7], ['8', 8],
+    ['9', 9], ['10', 10], ['j', 11], ['q', 12], ['k', 13], ['a', 14]]);
 let gameBoardState;
-let digitMap = new Map();
-digitMap.set('0', 0);
-digitMap.set('1', 1);
-digitMap.set('2', 2);
-digitMap.set('3', 3);
-digitMap.set('4', 4);
-digitMap.set('5', 5);
-digitMap.set('6', 6);
-digitMap.set('7', 7);
-digitMap.set('8', 8);
-digitMap.set('9', 9);
-digitMap.set('10', 10);
-digitMap.set('j', 11);
-digitMap.set('q', 12);
-digitMap.set('k', 13);
-digitMap.set('a', 14);
 const DISABLED_STATE = 'DISABLED';
 const ON_ATTACK_STATE = 'ON_ATTACK';
 const ON_DEFENSE_STATE = 'ON_DEFENSE';
 const ADDING_STATE = 'ADDING';
 const DEFENDING_STATE = 'DEFENDING';
+const DISCARD_PILE_NAME = 'discard';
+const DRAW_PILE_NAME = 'deck';
+const TRUMP_CARD_NAME = 'trump';
+
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
-
+const firstCardLocation = generateLocation(80, 630);
+const userStatusTextLocation = generateLocation(2, 500);
 const chairLocations = [generateLocation(430, 95), generateLocation(675, 15), generateLocation(890, 95),
     generateLocation(890, 410), generateLocation(675, 505), generateLocation(430, 410)];
 const usernameLocations = [generateLocation(280, 90), generateLocation(640, 10), generateLocation(960, 95),
@@ -38,11 +26,6 @@ const statusTextLocations = [generateLocation(280, 105), generateLocation(640, 2
     generateLocation(960, 425), generateLocation(640, 525), generateLocation(280, 425)];
 const individualCardsRemainingLocations = [generateLocation(280, 120), generateLocation(640, 40), generateLocation(960, 125),
     generateLocation(960, 440), generateLocation(640, 540), generateLocation(640, 440)];
-const playerIndices = [[1, 4], [0, 2, 4], [0, 2, 3, 5], [0, 1, 2, 3, 5], [0, 1, 2, 3, 4, 5]];
-let trumpCard;
-
-let firstCardLocation = generateLocation(80, 630);
-
 let attackSquareLocations = new Array(6);
 let defenseSquareLocations = new Array(6);
 for (let i = 0; i < 6; i++) {
@@ -51,15 +34,17 @@ for (let i = 0; i < 6; i++) {
     defenseSquareLocations[i] = generateLocation(leftCoordinate, 240);
 }
 
+const playerIndices = [[1, 4], [0, 2, 4], [0, 2, 3, 5], [0, 1, 2, 3, 5], [0, 1, 2, 3, 4, 5]];
+let trumpCard;
 let cardsDrawnInHand = new Set();
 let cardsDrawnOnTable = new Set();
+let generalGameCardStatuses = new Map([[DISCARD_PILE_NAME, false], [TRUMP_CARD_NAME, false], [DRAW_PILE_NAME, false]]);
 
 let attackSquares = new Array(6);
 let defenseSquares = new Array(6);
 let individualCardsRemainingTextObjects;
 let usernameTextObjects;
 let chairCircleObjects;
-let deckDrawnFlag, deckErasedFlag, trumpErasedFlag, discardDrawnFlag;
 let gamePlayed = false;
 
 function generateBackgroundGraphics() {
@@ -243,18 +228,15 @@ function generateTextObject(text, location, fontSize, fill) {
 
 function updateCardsRemaining(numCards) {
     cardsRemainingText.text = `Cards Remaining: ${numCards}`;
-    if ((numCards >= 2) && !deckDrawnFlag) {
-        deckDrawnFlag = true;
+    if ((numCards >= 2) && !generalGameCardStatuses.get(DRAW_PILE_NAME)) {
         drawDeck();
-    } else if ((numCards === 1) && !deckErasedFlag) {
+        generalGameCardStatuses.set(DRAW_PILE_NAME, true);
+    } else if ((numCards === 1) && generalGameCardStatuses.get(DRAW_PILE_NAME)) {
         eraseDeck();
-        deckErasedFlag = true;
-    } else if ((numCards === 0) && !trumpErasedFlag) {
+    } else if ((numCards === 0) && generalGameCardStatuses.get(TRUMP_CARD_NAME)) {
         eraseTrumpCard();
-        trumpErasedFlag = true;
-        if (!deckErasedFlag) {
+        if (generalGameCardStatuses.get(DRAW_PILE_NAME)) {
             eraseDeck();
-            deckErasedFlag = true;
         }
     }
 }
@@ -279,8 +261,8 @@ function pregenerateCardObjects() {
             cards[cardString] = generateCardObject(cardString, cardString);
         }
     }
-    cards['deck'] = generateCardObject('back', 'deck');
-    cards['discard'] = generateCardObject('back', 'discard');
+    cards[DRAW_PILE_NAME] = generateCardObject('back', DRAW_PILE_NAME);
+    cards[DISCARD_PILE_NAME] = generateCardObject('back', DISCARD_PILE_NAME);
 }
 
 function drawCard(card, location) {
@@ -293,34 +275,43 @@ function eraseCard(card) {
 }
 
 function drawTrumpCard(card) {
-    trumpCard = generateCardObject(card, 'trump');
+    trumpCard = generateCardObject(card, TRUMP_CARD_NAME);
     trumpCard.set(trumpLocation);
     canvas.add(trumpCard);
+    generalGameCardStatuses.set(TRUMP_CARD_NAME, true);
 }
 
 function eraseTrumpCard() {
-    console.log('removing trump card');
     canvas.remove(trumpCard);
+    generalGameCardStatuses.set(TRUMP_CARD_NAME, false);
 }
 
 function drawDeck() {
-    drawCard('deck', deckLocation);
+    drawCard(DRAW_PILE_NAME, deckLocation);
+    generalGameCardStatuses.set(DRAW_PILE_NAME, true);
+}
+
+function eraseDeck() {
+    eraseCard(DRAW_PILE_NAME);
+    generalGameCardStatuses.set(DRAW_PILE_NAME, false);
+}
+
+function drawDiscard() {
+    drawCard(DISCARD_PILE_NAME, discardLocation);
+    generalGameCardStatuses.set(DISCARD_PILE_NAME, true);
+}
+
+function eraseDiscard() {
+    eraseCard(DISCARD_PILE_NAME);
+    generalGameCardStatuses.set(DISCARD_PILE_NAME, false);
 }
 
 function updateCardsDiscarded(numCards) {
     cardsDiscardedText.text = `Cards Discarded: ${numCards}`;
-    if ((numCards > 0) && !discardDrawnFlag) {
-        drawCard('discard', discardLocation);
-        discardDrawnFlag = true;
+    if ((numCards > 0) && !generalGameCardStatuses.get(DISCARD_PILE_NAME)) {
+        drawDiscard();
+        generalGameCardStatuses.set(DISCARD_PILE_NAME, true);
     }
-}
-
-function eraseDeck() {
-    eraseCard('deck');
-}
-
-function eraseDiscard() {
-    eraseCard('discard');
 }
 
 function prepareCanvas(usernames) {
@@ -330,11 +321,10 @@ function prepareCanvas(usernames) {
         pregenerateCardObjects();
         generateBackgroundGraphics();
     } else {
-        eraseTrumpDeckAndDiscardCardsIfAny();
         clearGameSpecificGraphics();
     }
+    eraseGeneralGameCards();
     generateGameSpecificGraphics(usernames);
-    setGameSpecificUIVariables();
 }
 
 function drawCardInHand(card, position) {
@@ -479,26 +469,19 @@ function generateGameSpecificGraphics(usernames) {
     generateUsernameTexts(usernames);
 }
 
-function setGameSpecificUIVariables() {
-    deckDrawnFlag = false;
-    deckErasedFlag = false;
-    trumpErasedFlag = false;
-    discardDrawnFlag = false;
-}
-
 function eraseAllCardsOnTable() {
     eraseCardsOnTable();
     eraseCardsInHand();
 }
 
-function eraseTrumpDeckAndDiscardCardsIfAny() {
-    if (!deckErasedFlag) {
+function eraseGeneralGameCards() {
+    if (generalGameCardStatuses.get(DRAW_PILE_NAME)) {
         eraseDeck();
     }
-    if (!trumpErasedFlag) {
-        eraseTrumpCard();
-    }
-    if (discardDrawnFlag) {
+    if (generalGameCardStatuses.get(DISCARD_PILE_NAME)) {
         eraseDiscard();
+    }
+    if (generalGameCardStatuses.get(TRUMP_CARD_NAME)) {
+        eraseTrumpCard();
     }
 }
