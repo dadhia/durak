@@ -1,11 +1,10 @@
-var canvas;
-var cardsRemainingText;
-var cardsDiscardedText;
-var attackingStatusText, defendingStatusText, addingStatusText;
-var userStatusText;
+let canvas;
+let cardsRemainingText;
+let cardsDiscardedText;
+let attackingStatusText, defendingStatusText, addingStatusText, userStatusText;
 const userStatusTextLocation = generateLocation(2, 500);
-var cards = {};
-var gameBoardState;
+let cards = {};
+let gameBoardState;
 let digitMap = new Map();
 digitMap.set('0', 0);
 digitMap.set('1', 1);
@@ -42,58 +41,83 @@ const individualCardsRemainingLocations = [generateLocation(280, 120), generateL
 const playerIndices = [[1, 4], [0, 2, 4], [0, 2, 3, 5], [0, 1, 2, 3, 5], [0, 1, 2, 3, 4, 5]];
 let trumpCard;
 
-var firstCardLocation = generateLocation(80, 630);
+let firstCardLocation = generateLocation(80, 630);
 
-var attackSquareLocations = new Array(6);
-var defenseSquareLocations = new Array(6);
+let attackSquareLocations = new Array(6);
+let defenseSquareLocations = new Array(6);
 for (let i = 0; i < 6; i++) {
     let leftCoordinate = 535 + (i * 60);
     attackSquareLocations[i] = generateLocation(leftCoordinate, 160);
     defenseSquareLocations[i] = generateLocation(leftCoordinate, 240);
 }
 
-var cardsDrawnInHand = new Set();
-var cardsDrawnOnTable = new Set();
+let cardsDrawnInHand = new Set();
+let cardsDrawnOnTable = new Set();
 
-var objectToCard = {};
-
-var attackSquares = new Array(6);
-var defenseSquares = new Array(6);
-var individualCardsRemainingTexts;
-let deckFlag = false;
-let eraseFlag = false;
-let trumpFlag = false;
+let attackSquares = new Array(6);
+let defenseSquares = new Array(6);
+let individualCardsRemainingTextObjects;
+let usernameTextObjects;
+let chairCircleObjects;
+let deckDrawnFlag, deckErasedFlag, trumpErasedFlag, discardDrawnFlag;
+let gamePlayed = false;
 
 function generateBackgroundGraphics() {
-    generatePlayersStatusTexts();
-    var background = generateRect(generateLocation(0, 0), '#004C00', 1400, 600, String('background'));
-    var handBackground = generateRect(generateLocation(0, 600), '#BE9B7B', 1400, 200, String('background'));
-    var messageBackground = generateRect(generateLocation(0, 500), 'black', 400, 200, String('background'));
-    var table = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
-    for (let i = 0; i < 6; i++) {
-        attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, getAttackSquareName(i));
-        defenseSquares[i] = generateRect(defenseSquareLocations[i], '#4C814C', 40, 56, getDefenseSquareName(i));
+    if (!gameHasBeenPlayed()) {
+        let background = generateRect(generateLocation(0, 0), '#004C00', 1400, 600, String('background'));
+        let handBackground = generateRect(generateLocation(0, 600), '#BE9B7B', 1400, 200, String('background'));
+        let messageBackground = generateRect(generateLocation(0, 500), 'black', 400, 200, String('background'));
+        let cardTable = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
+
+        canvas.add(background, cardTable);
+        canvas.add(messageBackground);
+        canvas.add(handBackground);
+
+        for (let i = 0; i < 6; i++) {
+            attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, getAttackSquareName(i));
+            defenseSquares[i] = generateRect(defenseSquareLocations[i], '#4C814C', 40, 56, getDefenseSquareName(i));
+        }
+        for (let i = 0; i < 6; i++) {
+            canvas.add(attackSquares[i], defenseSquares[i]);
+        }
+
+        let attackText = generateTextObject('Attack', generateLocation(680, 120), 20, '#A40B0B');
+        let defenseText = generateTextObject('Defense', generateLocation(680, 300), 20, '#A40B0B');
+        canvas.add(attackText, defenseText);
+
+        let yourHandText = generateTextObject('Your Hand:', generateLocation(0, 600), 20, '#A40B0B');
+        canvas.add(yourHandText);
+
+        generateStatusTexts();
     }
-    var attackText = generateTextObject('Attack', generateLocation(680, 120), 20, '#A40B0B');
-    var defenseText = generateTextObject('Defense', generateLocation(680, 300), 20, '#A40B0B');
-    var yourHandText = generateTextObject('Your Hand:', generateLocation(0, 600), 20, '#A40B0B');
-    canvas.add(background, table);
-    canvas.add(messageBackground);
-    canvas.add(handBackground);
-    for (let i = 0; i < 6; i++) {
-        canvas.add(attackSquares[i], defenseSquares[i]);
-    }
-    canvas.add(attackText, defenseText);
-    canvas.add(yourHandText);
 }
 
-function generateUserStatusText() {
-    userStatusText = generateTextObject('', userStatusTextLocation, 15, 'white');
+function gameHasBeenPlayed() {
+    return gamePlayed;
+}
+
+function setGameHasBeenPlayed(value) {
+    gamePlayed = value;
+}
+
+/**
+ * Generates four different text objects: labels for attacking, defending, and adding as well as a user status text
+ * which provides generic info on the current move being played.
+ */
+function generateStatusTexts() {
+    attackingStatusText = generateTextObject('Attacking', generateLocation(0,0), 12, '#FBA92E');
+    defendingStatusText = generateTextObject('Defending', generateLocation(0, 0), 12, '#FBA92E');
+    addingStatusText = generateTextObject('Adding', generateLocation(0, 0), 12, '#FBA92E');
+    userStatusText = userStatusText = generateTextObject('', userStatusTextLocation, 15, 'white');
+    canvas.add(userStatusText);
+    cardsRemainingText = generateTextObject('Cards Remaining: 00', generateLocation(510, 390), 12, '#A40B0B');
+    canvas.add(cardsRemainingText);
+    cardsDiscardedText = generateTextObject('Cards Discarded: 00', generateLocation(750, 390), 12, '#A40B0B');
+    canvas.add(cardsDiscardedText);
 }
 
 function updateUserStatusText(text) {
     userStatusText.text = text;
-    canvas.add(userStatusText);
 }
 
 function getAttackSquareName(squareIndex) {
@@ -104,23 +128,22 @@ function getDefenseSquareName(squareIndex) {
     return 'defense' + squareIndex
 }
 
-function generateUsernameTexts(numPlayers, names) {
-    individualCardsRemainingTexts = [];
+function generateUsernameTexts(usernames) {
+    individualCardsRemainingTextObjects = [];
+    usernameTextObjects = [];
+    let numPlayers = usernames.length;
     for (let i = 0; i < numPlayers; i++) {
         const location = usernameLocations[playerIndices[numPlayers-2][i]];
-        const text = generateTextObject(names[i], location, 12, '#f4f6f8');
-        canvas.add(text);
-        const cardsRemainingLocation = individualCardsRemainingLocations[playerIndices[numPlayers-2][i]]
-        let handCards = generateTextObject('Cards In Hand: 0', cardsRemainingLocation, 12, '#C6E2FF');
-        canvas.add(handCards);
-        individualCardsRemainingTexts.push(handCards);
-    }
-}
+        const textObject = generateTextObject(usernames[i], location, 12, '#f4f6f8');
+        canvas.add(textObject);
+        usernameTextObjects.push(textObject);
 
-function generatePlayersStatusTexts() {
-    attackingStatusText = generateTextObject('Attacking', generateLocation(0,0), 12, '#FBA92E');
-    defendingStatusText = generateTextObject('Defending', generateLocation(0, 0), 12, '#FBA92E');
-    addingStatusText = generateTextObject('Adding', generateLocation(0, 0), 12, '#FBA92E');
+        const cardsRemainingLocation = individualCardsRemainingLocations[playerIndices[numPlayers-2][i]];
+        let cardsInHandTextObject = generateTextObject('Cards In Hand: 0', cardsRemainingLocation, 12, '#C6E2FF');
+
+        canvas.add(cardsInHandTextObject);
+        individualCardsRemainingTextObjects.push(cardsInHandTextObject);
+    }
 }
 
 function drawAttacking(numPlayers, playerNo) {
@@ -156,10 +179,12 @@ function drawTrumpSuitText(suit) {
 }
 
 function generateChairs(numPlayers) {
+    chairCircleObjects = [];
     for (let i = 0; i < numPlayers; i++) {
         const location = chairLocations[playerIndices[numPlayers-2][i]];
         const chair = generateCircle(location, '#A40B0B', 40);
         canvas.add(chair);
+        chairCircleObjects.push(chair);
     }
 }
 
@@ -216,35 +241,27 @@ function generateTextObject(text, location, fontSize, fill) {
     });
 }
 
-function drawStatusText() {
-    cardsRemainingText = generateTextObject('Cards Remaining: 00', generateLocation(510, 390), 12, '#A40B0B');
-    canvas.add(cardsRemainingText);
-    cardsDiscardedText = generateTextObject('Cards Discarded: 00', generateLocation(750, 390), 12, '#A40B0B');
-    canvas.add(cardsDiscardedText);
-}
-
 function updateCardsRemaining(numCards) {
     cardsRemainingText.text = `Cards Remaining: ${numCards}`;
-    if ((numCards >= 2) && !deckFlag) {
-        deckFlag = true;
+    if ((numCards >= 2) && !deckDrawnFlag) {
+        deckDrawnFlag = true;
         drawDeck();
-    } else if ((numCards === 1) && !eraseFlag) {
+    } else if ((numCards === 1) && !deckErasedFlag) {
         eraseDeck();
-        eraseFlag = true;
-    } else if ((numCards === 0) && !trumpFlag) {
-        console.log('erasing trump card');
+        deckErasedFlag = true;
+    } else if ((numCards === 0) && !trumpErasedFlag) {
         eraseTrumpCard();
-        trumpFlag = true;
-        if (!eraseFlag) {
+        trumpErasedFlag = true;
+        if (!deckErasedFlag) {
             eraseDeck();
-            eraseFlag = true;
+            deckErasedFlag = true;
         }
     }
 }
 
 function generateCardObject(id, cardObjectID) {
-    var image = document.getElementById(`card-${id}`);
-    var cardCanvasObject = new fabric.Image(image, {selectable: false, id:cardObjectID});
+    let image = document.getElementById(`card-${id}`);
+    let cardCanvasObject = new fabric.Image(image, {selectable: false, id:cardObjectID});
     cardCanvasObject.scale(0.3);
     return cardCanvasObject;
 }
@@ -256,18 +273,14 @@ function pregenerateCardObjects() {
         for (let i = 2; i < 11; i ++) {
             let cardString = String(suits.charAt(suitIndex)) + String(i);
             cards[cardString] = generateCardObject(cardString, cardString);
-            objectToCard[cards[cardString]] = cardString;
         }
         for (let i = 0; i < royals.length; i++) {
             let cardString = String(suits.charAt(suitIndex)) + String(royals.charAt(i));
             cards[cardString] = generateCardObject(cardString, cardString);
-            objectToCard[cards[cardString]] = cardString;
         }
     }
     cards['deck'] = generateCardObject('back', 'deck');
     cards['discard'] = generateCardObject('back', 'discard');
-    objectToCard[cards['discard']] = 'discard';
-    objectToCard[cards['deck']] = 'deck';
 }
 
 function drawCard(card, location) {
@@ -296,10 +309,9 @@ function drawDeck() {
 
 function updateCardsDiscarded(numCards) {
     cardsDiscardedText.text = `Cards Discarded: ${numCards}`;
-    if (numCards > 0) {
+    if ((numCards > 0) && !discardDrawnFlag) {
         drawCard('discard', discardLocation);
-    } else {
-        eraseCard('discard');
+        discardDrawnFlag = true;
     }
 }
 
@@ -307,15 +319,22 @@ function eraseDeck() {
     eraseCard('deck');
 }
 
-function prepareCanvas(numPlayers, usernames) {
-    canvas = new fabric.Canvas('durak-table');
-    canvas.hoverCursor = 'default';
-    pregenerateCardObjects();
-    generateBackgroundGraphics();
-    generateChairs(numPlayers);
-    drawStatusText();
-    generateUsernameTexts(numPlayers, usernames);
-    generateUserStatusText();
+function eraseDiscard() {
+    eraseCard('discard');
+}
+
+function prepareCanvas(usernames) {
+    if (!gameHasBeenPlayed()) {
+        canvas = new fabric.Canvas('durak-table');
+        canvas.hoverCursor = 'default';
+        pregenerateCardObjects();
+        generateBackgroundGraphics();
+    } else {
+        eraseTrumpDeckAndDiscardCardsIfAny();
+        clearGameSpecificGraphics();
+    }
+    generateGameSpecificGraphics(usernames);
+    setGameSpecificUIVariables();
 }
 
 function drawCardInHand(card, position) {
@@ -351,14 +370,6 @@ function eraseCardsInHand() {
         canvas.remove(card);
     }
     cardsDrawnInHand.clear();
-}
-
-function makeCardUnselectable(card) {
-    cards[card].set({opacity: 0.4});
-}
-
-function makeCardSelectable(card) {
-    cards[card].set({opacity: 1.0});
 }
 
 function closeAttackSquares(squares) {
@@ -448,9 +459,46 @@ function getCardSuit(card) {
 function updateCardsInHand(cardsPerHand) {
     for (let i = 0; i < cardsPerHand.length; i++) {
         if (cardsPerHand[i] > 0) {
-            individualCardsRemainingTexts[i].text = `Cards in Hand: ${cardsPerHand[i]}`;
+            individualCardsRemainingTextObjects[i].text = `Cards in Hand: ${cardsPerHand[i]}`;
         } else {
-            individualCardsRemainingTexts[i].text = 'Cards in Hand: 0 (Done)';
+            individualCardsRemainingTextObjects[i].text = 'Cards in Hand: 0 (Done)';
         }
+    }
+}
+
+function clearGameSpecificGraphics() {
+    for (let i = 0; i < chairCircleObjects.length; i++) {
+        canvas.remove(chairCircleObjects[i]);
+        canvas.remove(usernameTextObjects[i]);
+        canvas.remove(individualCardsRemainingTextObjects[i])
+    }
+}
+
+function generateGameSpecificGraphics(usernames) {
+    generateChairs(usernames.length);
+    generateUsernameTexts(usernames);
+}
+
+function setGameSpecificUIVariables() {
+    deckDrawnFlag = false;
+    deckErasedFlag = false;
+    trumpErasedFlag = false;
+    discardDrawnFlag = false;
+}
+
+function eraseAllCardsOnTable() {
+    eraseCardsOnTable();
+    eraseCardsInHand();
+}
+
+function eraseTrumpDeckAndDiscardCardsIfAny() {
+    if (!deckErasedFlag) {
+        eraseDeck();
+    }
+    if (!trumpErasedFlag) {
+        eraseTrumpCard();
+    }
+    if (discardDrawnFlag) {
+        eraseDiscard();
     }
 }

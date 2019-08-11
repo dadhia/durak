@@ -247,6 +247,7 @@ function clearCardsOnTableVariables() {
     digitsOnTable.clear();
 }
 
+
 $(document).ready(function() {
     var socket = io.connect('http://127.0.0.1:5000');
 
@@ -263,11 +264,6 @@ $(document).ready(function() {
         $('#' + buttonID).on(CLICK_EVENT, function() {
             socket.emit(JOIN_LOBBY_GAME_EVENT, gameID);
         });
-    }
-
-    function eraseAllCardsOnTable() {
-        eraseCardsOnTable();
-        eraseCardsInHand();
     }
 
     function returnToLobby() {
@@ -305,11 +301,14 @@ $(document).ready(function() {
         $('table#openGamesTable tr#' + game_id).find('td').eq(2).text(remaining_spots);
     });
 
-    socket.on(INIT_GAME_EVENT, function(gameID, numPlayers, screenNamesList) {
+    socket.on(INIT_GAME_EVENT, function(gameID, screenNamesList) {
         joinedGameID = gameID;
         gameView();
-        prepareCanvas(numPlayers, screenNamesList);
-        getCanvas().on('mouse:down', canvasMouseClickHandler);
+        prepareCanvas(screenNamesList);
+        if (!gameHasBeenPlayed()) {
+            getCanvas().on('mouse:down', canvasMouseClickHandler);
+            setGameHasBeenPlayed(true);
+        }
         hideAllGamePlayButtons();
     });
 
@@ -411,7 +410,6 @@ $(document).ready(function() {
     });
 
     socket.on(GAME_OVER_EVENT, function(message) {
-        // TODO clean up UI to allow for a brand new game
         $('#gameOverText').text(message);
         gameOverView();
     });
@@ -429,7 +427,9 @@ $(document).ready(function() {
         socket.emit(CANCEL_LOBBY_GAME_EVENT, joinedGameID);
     });
 
-    $('#returnToLobbyButton').on(CLICK_EVENT, returnToLobby);
+    $('#returnToLobbyButton').on(CLICK_EVENT, function() {
+        returnToLobby();
+    });
 
     $('#attackButton').on(CLICK_EVENT, function() {
         if (getGameBoardState() === ON_ATTACK_STATE) {
