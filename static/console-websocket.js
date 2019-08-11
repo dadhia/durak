@@ -247,9 +247,6 @@ function clearCardsOnTableVariables() {
     digitsOnTable.clear();
 }
 
-function cleanUIForReuse() {
-    hideAllGamePlayButtons();
-}
 
 $(document).ready(function() {
     var socket = io.connect('http://127.0.0.1:5000');
@@ -310,6 +307,7 @@ $(document).ready(function() {
         prepareCanvas(screenNamesList);
         if (!gameHasBeenPlayed()) {
             getCanvas().on('mouse:down', canvasMouseClickHandler);
+            setGameHasBeenPlayed(true);
         }
         hideAllGamePlayButtons();
     });
@@ -430,7 +428,6 @@ $(document).ready(function() {
     });
 
     $('#returnToLobbyButton').on(CLICK_EVENT, function() {
-        cleanUIForReuse();
         returnToLobby();
     });
 

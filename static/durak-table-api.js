@@ -64,33 +64,40 @@ let gamePlayed = false;
 
 function generateBackgroundGraphics() {
     if (!gameHasBeenPlayed()) {
-        generateStatusTexts();
         let background = generateRect(generateLocation(0, 0), '#004C00', 1400, 600, String('background'));
         let handBackground = generateRect(generateLocation(0, 600), '#BE9B7B', 1400, 200, String('background'));
         let messageBackground = generateRect(generateLocation(0, 500), 'black', 400, 200, String('background'));
         let cardTable = generateEllipse(generateLocation(700, 300), 'black', '#BE9B7B', 250, 200);
-        for (let i = 0; i < 6; i++) {
-            attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, getAttackSquareName(i));
-            defenseSquares[i] = generateRect(defenseSquareLocations[i], '#4C814C', 40, 56, getDefenseSquareName(i));
-        }
-        let attackText = generateTextObject('Attack', generateLocation(680, 120), 20, '#A40B0B');
-        let defenseText = generateTextObject('Defense', generateLocation(680, 300), 20, '#A40B0B');
-        let yourHandText = generateTextObject('Your Hand:', generateLocation(0, 600), 20, '#A40B0B');
 
         canvas.add(background, cardTable);
         canvas.add(messageBackground);
         canvas.add(handBackground);
+
+        for (let i = 0; i < 6; i++) {
+            attackSquares[i] = generateRect(attackSquareLocations[i], '#4C814C', 40, 56, getAttackSquareName(i));
+            defenseSquares[i] = generateRect(defenseSquareLocations[i], '#4C814C', 40, 56, getDefenseSquareName(i));
+        }
         for (let i = 0; i < 6; i++) {
             canvas.add(attackSquares[i], defenseSquares[i]);
         }
+
+        let attackText = generateTextObject('Attack', generateLocation(680, 120), 20, '#A40B0B');
+        let defenseText = generateTextObject('Defense', generateLocation(680, 300), 20, '#A40B0B');
         canvas.add(attackText, defenseText);
+
+        let yourHandText = generateTextObject('Your Hand:', generateLocation(0, 600), 20, '#A40B0B');
         canvas.add(yourHandText);
-        gamePlayed = true;
+
+        generateStatusTexts();
     }
 }
 
 function gameHasBeenPlayed() {
     return gamePlayed;
+}
+
+function setGameHasBeenPlayed(value) {
+    gamePlayed = value;
 }
 
 /**
@@ -127,7 +134,7 @@ function generateUsernameTexts(usernames) {
     let numPlayers = usernames.length;
     for (let i = 0; i < numPlayers; i++) {
         const location = usernameLocations[playerIndices[numPlayers-2][i]];
-        const textObject = generateTextObject(names[i], location, 12, '#f4f6f8');
+        const textObject = generateTextObject(usernames[i], location, 12, '#f4f6f8');
         canvas.add(textObject);
         usernameTextObjects.push(textObject);
 
@@ -323,9 +330,9 @@ function prepareCanvas(usernames) {
         pregenerateCardObjects();
         generateBackgroundGraphics();
     } else {
+        eraseTrumpDeckAndDiscardCardsIfAny();
         clearGameSpecificGraphics();
     }
-    eraseTrumpDeckAndDiscardCardsIfAny();
     generateGameSpecificGraphics(usernames);
     setGameSpecificUIVariables();
 }
