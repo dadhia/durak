@@ -382,29 +382,26 @@ class InProgressGame:
             self.__enable_defending_ui()
 
     def __construct_on_attack_message(self):
-        on_defense_screen_name = self.__get_screen_name(self.defense_index)
-        return 'YOUR TURN: Attacking ' + on_defense_screen_name
+        return 'YOUR TURN: Attacking %s' % self.__get_screen_name(self.defense_index)
 
     def __construct_on_attack_status_message(self):
         on_attack_screen_name = self.__get_screen_name(self.attack_index)
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
-        return on_attack_screen_name + ' is attacking ' + on_defense_screen_name
+        return '%s is attacking %s' % (on_attack_screen_name, on_defense_screen_name)
 
     def __construct_on_defense_message(self):
         return 'YOUR TURN: Defending'
 
     def __construct_on_defense_status_message(self):
-        on_defense_screen_name = self.__get_screen_name(self.defense_index)
-        return on_defense_screen_name + ' is defending.'
+        return '%s is defending.' % self.__get_screen_name(self.defense_index)
 
     def __construct_adding_message(self):
-        on_defense_screen_name = self.__get_screen_name(self.defense_index)
-        return 'YOUR TURN: Adding to attack on ' + on_defense_screen_name
+        return 'YOUR TURN: Adding to attack on %s' % self.__get_screen_name(self.defense_index)
 
     def __construct_adding_status_message(self):
         on_defense_screen_name = self.__get_screen_name(self.defense_index)
         on_adding_screen_name = self.__get_screen_name(self.adding_index)
-        return on_adding_screen_name + ' is adding to attack on ' + on_defense_screen_name
+        return '%s is adding to attack on %s' % (on_adding_screen_name, on_defense_screen_name)
 
     def __draw_attacking_label(self):
         emit(events.DRAW_ATTACKING, (self.game.num_players, self.attack_index), room=self.room_name)
