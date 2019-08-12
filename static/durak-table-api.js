@@ -18,14 +18,18 @@ const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
 const firstCardLocation = generateLocation(80, 630);
 const userStatusTextLocation = generateLocation(2, 500);
-const chairLocations = [generateLocation(430, 95), generateLocation(675, 15), generateLocation(890, 95),
-    generateLocation(890, 410), generateLocation(675, 505), generateLocation(430, 410)];
-const usernameLocations = [generateLocation(280, 90), generateLocation(640, 10), generateLocation(960, 95),
-    generateLocation(960, 410), generateLocation(640, 510), generateLocation(280, 410)];
-const statusTextLocations = [generateLocation(280, 105), generateLocation(640, 25), generateLocation(960, 110),
-    generateLocation(960, 425), generateLocation(640, 525), generateLocation(280, 425)];
-const individualCardsRemainingLocations = [generateLocation(280, 120), generateLocation(640, 40), generateLocation(960, 125),
-    generateLocation(960, 440), generateLocation(640, 540), generateLocation(640, 440)];
+const chairLocations = [generateLocation(430, 95), generateLocation(675, 15),
+    generateLocation(890, 95), generateLocation(890, 410),
+    generateLocation(675, 505), generateLocation(430, 410)];
+const usernameLocations = [generateLocation(405, 90), generateLocation(640, 10),
+    generateLocation(960, 95), generateLocation(960, 410),
+    generateLocation(640, 510), generateLocation(405, 410)];
+const statusTextLocations = [generateLocation(405, 105), generateLocation(640, 25),
+    generateLocation(960, 110), generateLocation(960, 425),
+    generateLocation(640, 525), generateLocation(405, 425)];
+const individualCardsRemainingLocations = [generateLocation(405, 120), generateLocation(640, 40),
+    generateLocation(960, 125), generateLocation(960, 440),
+    generateLocation(640, 540), generateLocation(405, 440)];
 let attackSquareLocations = new Array(6);
 let defenseSquareLocations = new Array(6);
 for (let i = 0; i < 6; i++) {

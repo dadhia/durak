@@ -69,7 +69,7 @@ class InProgressGame:
 
     def __set_slide_index(self):
         self.slide_index = (self.defense_index + 1) % self.game.num_players
-        while self.still_playing[self.attack_index] is False:
+        while self.still_playing[self.slide_index] is False:
             self.slide_index = (self.slide_index + 1) % self.game.num_players
 
     def __set_drawing_index(self, initial):
@@ -187,7 +187,7 @@ class InProgressGame:
     def __discard_all_cards_on_table(self):
         """ Discards all the cards on the table after a successful defense. """
         for card in self.attack_cards + self.defense_cards:
-            self.deck.discard_card(card)
+            self.deck.discard_card()
         self.attack_cards = []
         self.defense_cards = []
 
