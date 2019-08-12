@@ -12,6 +12,7 @@ const DEFENDING_STATE = 'DEFENDING';
 const DISCARD_PILE_NAME = 'discard';
 const DRAW_PILE_NAME = 'deck';
 const TRUMP_CARD_NAME = 'trump';
+let attackingLabelIndex, defendingLabelIndex, addingLabelIndex;
 
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
@@ -136,30 +137,51 @@ function generateUsernameTexts(usernames) {
 }
 
 function drawAttacking(numPlayers, playerNo) {
-    attackingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
-    canvas.add(attackingStatusText);
+    if (attackingLabelIndex !== playerNo) {
+        if (attackingLabelIndex !== -1) {
+            canvas.remove(attackingLabelIndex);
+        }
+        attackingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
+        canvas.add(attackingStatusText);
+        attackingLabelIndex = playerNo;
+    }
 }
 
 function drawDefending(numPlayers, playerNo) {
-    defendingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
-    canvas.add(defendingStatusText);
+    if (defendingLabelIndex !== playerNo) {
+        if (defendingLabelIndex !== -1) {
+            canvas.remove(defendingStatusText);
+        }
+        defendingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
+        canvas.add(defendingStatusText);
+        defendingLabelIndex = playerNo;
+    }
 }
 
 function drawAdding(numPlayers, playerNo) {
-    addingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
-    canvas.add(addingStatusText);
+    if (addingLabelIndex !== playerNo) {
+        if (addingLabelIndex !== -1) {
+            canvas.remove(addingStatusText);
+        }
+        addingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
+        canvas.add(addingStatusText);
+        addingLabelIndex = playerNo;
+    }
 }
 
 function eraseAttacking() {
     canvas.remove(attackingStatusText);
+    attackingLabelIndex = -1;
 }
 
 function eraseDefending() {
     canvas.remove(defendingStatusText);
+    defendingLabelIndex = -1;
 }
 
 function eraseAdding() {
     canvas.remove(addingStatusText);
+    addingLabelIndex = -1;
 }
 
 function drawTrumpSuitText(suit) {
@@ -327,6 +349,7 @@ function prepareCanvas(usernames) {
     } else {
         clearGameSpecificGraphics();
     }
+    resetLabelIndices();
     eraseGeneralGameCards();
     generateGameSpecificGraphics(usernames);
 }
@@ -488,4 +511,10 @@ function eraseGeneralGameCards() {
     if (generalGameCardStatuses.get(TRUMP_CARD_NAME)) {
         eraseTrumpCard();
     }
+}
+
+function resetLabelIndices() {
+    addingLabelIndex = -1;
+    defendingLabelIndex = -1;
+    attackingLabelIndex = -1;
 }
