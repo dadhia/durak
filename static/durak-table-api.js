@@ -12,20 +12,25 @@ const DEFENDING_STATE = 'DEFENDING';
 const DISCARD_PILE_NAME = 'discard';
 const DRAW_PILE_NAME = 'deck';
 const TRUMP_CARD_NAME = 'trump';
+let attackingLabelIndex, defendingLabelIndex, addingLabelIndex;
 
 const deckLocation = generateLocation(520, 330);
 const trumpLocation = generateLocation(570, 330);
 const discardLocation= generateLocation(790, 330);
 const firstCardLocation = generateLocation(80, 630);
 const userStatusTextLocation = generateLocation(2, 500);
-const chairLocations = [generateLocation(430, 95), generateLocation(675, 15), generateLocation(890, 95),
-    generateLocation(890, 410), generateLocation(675, 505), generateLocation(430, 410)];
-const usernameLocations = [generateLocation(280, 90), generateLocation(640, 10), generateLocation(960, 95),
-    generateLocation(960, 410), generateLocation(640, 510), generateLocation(280, 410)];
-const statusTextLocations = [generateLocation(280, 105), generateLocation(640, 25), generateLocation(960, 110),
-    generateLocation(960, 425), generateLocation(640, 525), generateLocation(280, 425)];
-const individualCardsRemainingLocations = [generateLocation(280, 120), generateLocation(640, 40), generateLocation(960, 125),
-    generateLocation(960, 440), generateLocation(640, 540), generateLocation(640, 440)];
+const chairLocations = [generateLocation(430, 95), generateLocation(675, 15),
+    generateLocation(890, 95), generateLocation(890, 410),
+    generateLocation(675, 505), generateLocation(430, 410)];
+const usernameLocations = [generateLocation(405, 90), generateLocation(640, 10),
+    generateLocation(960, 95), generateLocation(960, 410),
+    generateLocation(640, 510), generateLocation(405, 410)];
+const statusTextLocations = [generateLocation(405, 105), generateLocation(640, 25),
+    generateLocation(960, 110), generateLocation(960, 425),
+    generateLocation(640, 525), generateLocation(405, 425)];
+const individualCardsRemainingLocations = [generateLocation(405, 120), generateLocation(640, 40),
+    generateLocation(960, 125), generateLocation(960, 440),
+    generateLocation(640, 540), generateLocation(405, 440)];
 let attackSquareLocations = new Array(6);
 let defenseSquareLocations = new Array(6);
 for (let i = 0; i < 6; i++) {
@@ -132,30 +137,51 @@ function generateUsernameTexts(usernames) {
 }
 
 function drawAttacking(numPlayers, playerNo) {
-    attackingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
-    canvas.add(attackingStatusText);
+    if (attackingLabelIndex !== playerNo) {
+        if (attackingLabelIndex !== -1) {
+            canvas.remove(attackingLabelIndex);
+        }
+        attackingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
+        canvas.add(attackingStatusText);
+        attackingLabelIndex = playerNo;
+    }
 }
 
 function drawDefending(numPlayers, playerNo) {
-    defendingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
-    canvas.add(defendingStatusText);
+    if (defendingLabelIndex !== playerNo) {
+        if (defendingLabelIndex !== -1) {
+            canvas.remove(defendingStatusText);
+        }
+        defendingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
+        canvas.add(defendingStatusText);
+        defendingLabelIndex = playerNo;
+    }
 }
 
 function drawAdding(numPlayers, playerNo) {
-    addingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
-    canvas.add(addingStatusText);
+    if (addingLabelIndex !== playerNo) {
+        if (addingLabelIndex !== -1) {
+            canvas.remove(addingStatusText);
+        }
+        addingStatusText.set(statusTextLocations[playerIndices[numPlayers-2][playerNo]]);
+        canvas.add(addingStatusText);
+        addingLabelIndex = playerNo;
+    }
 }
 
 function eraseAttacking() {
     canvas.remove(attackingStatusText);
+    attackingLabelIndex = -1;
 }
 
 function eraseDefending() {
     canvas.remove(defendingStatusText);
+    defendingLabelIndex = -1;
 }
 
 function eraseAdding() {
     canvas.remove(addingStatusText);
+    addingLabelIndex = -1;
 }
 
 function drawTrumpSuitText(suit) {
@@ -323,6 +349,7 @@ function prepareCanvas(usernames) {
     } else {
         clearGameSpecificGraphics();
     }
+    resetLabelIndices();
     eraseGeneralGameCards();
     generateGameSpecificGraphics(usernames);
 }
@@ -484,4 +511,10 @@ function eraseGeneralGameCards() {
     if (generalGameCardStatuses.get(TRUMP_CARD_NAME)) {
         eraseTrumpCard();
     }
+}
+
+function resetLabelIndices() {
+    addingLabelIndex = -1;
+    defendingLabelIndex = -1;
+    attackingLabelIndex = -1;
 }

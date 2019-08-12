@@ -51,13 +51,13 @@ def add_user_to_game(user_id, game_id):
     game = Game.query.filter_by(id=game_id).first()
     if game.num_players == game.players_joined:
         logging.error('Attempted add user to full game')
-        return False
+        return False, game
     else:
         game.players_joined += 1
         game_played = GamePlayed(user_id=user_id, game_id=game_id, join_position=game.players_joined)
         db.session.add(game_played)
         db.session.commit()
-        return True
+        return True, game
 
 
 def remove_user_from_game(user_id, game_id):

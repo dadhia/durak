@@ -192,9 +192,9 @@ def join_lobby_game(game_id):
     Handles a request to join a lobby game.
     :param game_id: int
     """
-    success = db_operations.add_user_to_game(current_user.id, game_id)
+    success, game = db_operations.add_user_to_game(current_user.id, game_id)
+    lobby_games[game_id] = game
     if success:
-        game = db_operations.get_game(game_id)
         if game.num_players == game.players_joined:
             lobby_games[game_id].started = True
             del lobby_games[game_id]
