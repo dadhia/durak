@@ -10,4 +10,3 @@ class Game(db.Model):
     cancelled = db.Column(db.Boolean, nullable=False)
     completed = db.Column(db.Boolean, nullable=False)
     players_joined = db.Column(db.Integer, nullable=False)
-
