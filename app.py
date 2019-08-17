@@ -17,6 +17,7 @@ from models.loss import Loss
 from database import db_operations
 from game import game_management
 from game.game_states import GameStates
+import functools
 
 
 login_manager = LoginManager()
@@ -38,6 +39,16 @@ def create_app():
     bootstrap.init_app(app)
     with app.app_context():
         db.create_all()
+
+
+def authenticated_only(f):
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        if not current_user.is_authenticated:
+            disconnect()
+        else:
+            return f(*args, **kwargs)
+    return wrapped
 
 
 @app.route('/', methods=['GET'])
@@ -95,7 +106,6 @@ def console():
 
 
 @app.route('/console/logout/', methods=['GET'])
-@login_required
 def logout():
     """ Handles a logout request from a client. """
     logout_user()
@@ -103,7 +113,7 @@ def logout():
 
 
 @socketio.on(events.CONNECT)
-@login_required
+@authenticated_only
 def connect():
     """
     Called when a user logs into their console and connects with a websocket.
@@ -115,7 +125,6 @@ def connect():
 
 
 @socketio.on(events.NEW_GAME)
-@login_required
 def new_game(num_players):
     """
     Creates a new game.  The game is entered into a database table of games with started = False and cancelled = False.
@@ -134,7 +143,6 @@ def new_game(num_players):
 
 
 @socketio.on(events.DISCONNECT)
-@login_required
 def disconnect():
     """
     Called when a user disconnects from their console.
@@ -171,7 +179,6 @@ def disconnect():
 
 
 @socketio.on(events.CANCEL_LOBBY_GAME)
-@login_required
 def cancel_lobby_game(game_id):
     """
     Cancels a game that a user has created in the game lobby. Moves user from the room for that game into the lobby.
@@ -186,7 +193,6 @@ def cancel_lobby_game(game_id):
 
 
 @socketio.on(events.JOIN_LOBBY_GAME)
-@login_required
 def join_lobby_game(game_id):
     """
     Handles a request to join a lobby game.
@@ -212,7 +218,6 @@ def join_lobby_game(game_id):
 
 
 @socketio.on(events.LEAVE_LOBBY_GAME)
-@login_required
 def leave_lobby_game(game_id):
     """
     Handles request from client to leave a game that it has joined.  Notifies all clients in the lobby that a new spot
@@ -228,7 +233,6 @@ def leave_lobby_game(game_id):
 
 
 @socketio.on(events.REQUEST_ALL_LOBBY_GAMES)
-@login_required
 def request_all_lobby_games():
     """ Handles a request from client for all lobby games.  Sends a POPULATE_LOBBY_GAMES message back to client. """
     lobby_games_list = []
@@ -240,14 +244,12 @@ def request_all_lobby_games():
 
 
 @socketio.on(events.REJOIN_LOBBY)
-@login_required
 def rejoin_lobby():
     """ Handles request from client to rejoin lobby. """
     room_manager.join_lobby(current_user.id)
 
 
 @socketio.on(events.GAME_RESPONSE)
-@login_required
 def game_response_handler(game_id, response, attack_cards, defense_cards, cards_added_this_turn):
     if game_id in in_progress_games:
         in_progress_games[game_id].transition_state(response, attack_cards, defense_cards, cards_added_this_turn)
