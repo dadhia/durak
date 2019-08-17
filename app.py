@@ -72,7 +72,6 @@ def register():
             login_user(new_user)
             return redirect(url_for('console'))
         except IntegrityError:
-            print('integrity error')
             return render_template('index-with-errors.html',
                                    error_message=DUPLICATE_EMAIL,
                                    login_form=LoginForm(),
